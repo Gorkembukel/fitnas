@@ -347,6 +347,12 @@ function target(e,d){
   return {sets,v};
 }
 const catIndex=e=>S.all().indexOf(e);
+function autoTargets(sets,base,inc,pct){const dl=Math.max(1,Math.round(base*pct/100));
+  return [{sets,v:base},{sets,v:base+inc},{sets,v:base+2*inc},{sets,v:dl}];}
+function detectAuto(tg){if(tg.length<4)return null;const s=tg[0].sets;if(s<1||!tg.every(t=>t.sets===s))return null;
+  const inc=tg[1].v-tg[0].v;if(inc<0||tg[2].v-tg[1].v!==inc)return null;const base=tg[0].v;if(base<=0||tg[3].v>base)return null;
+  return {sets:s,base,inc,pct:Math.round(tg[3].v/base*100)};}
+function weekDate(week,wd){const b=new Date(S.start.getTime()+(week-1)*7*86400000);const off=(wd-weekday(b)+7)%7;return dOnly(new Date(b.getTime()+off*86400000));}
 function todayList(d){const wd=weekday(d);
   const l=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(wd)&&target(e,d)!==null);
   l.sort((a,b)=>{const c=(kGrpOrder[a.grp]??9)-(kGrpOrder[b.grp]??9);return c!==0?c:catIndex(a)-catIndex(b);});return l;}
@@ -357,6 +363,8 @@ function addLog(id,v,r){S.logs.push({e:id,t:Date.now(),v,r});changed();}
 function undoLast(id){for(let i=S.logs.length-1;i>=0;i--){if(S.logs[i].e===id){S.logs.splice(i,1);break;}}changed();}
 function toggleActive(id){S.active.has(id)?S.active.delete(id):S.active.add(id);changed();}
 function removeCustom(id){S.custom=S.custom.filter(e=>e.id!==id);S.active.delete(id);delete S.overrides[id];S.reindex();changed();}
+function addDay(id,d){const e=S.ex(id);if(!e)return;const def=defOf(e);if(!def.days.includes(d)){def.days=[...def.days,d].sort((a,b)=>a-b);}S.active.add(id);saveExercise(id,def);}
+function removeDay(id,d){const e=S.ex(id);if(!e)return;const def=defOf(e);def.days=def.days.filter(x=>x!==d);saveExercise(id,def);}
 function toggleSignal(key,area){const l=S.signals[key]||(S.signals[key]=[]);const i=l.indexOf(area);i>=0?l.splice(i,1):l.push(area);changed();}
 function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 function setStart(d){S.start=dOnly(d);changed();}
@@ -550,13 +558,74 @@ function maxCard(e,isDue){
     <div style="text-align:right;margin-top:8px"><button class="${isDue?'fill':'out'}" data-act="retest" data-id="${e.id}">Yeniden test et</button></div></div>`;
 }
 
-/* ══════════════ SIRADAKİ ══════════════ */
+/* ══════════════ PROGRAM ══════════════ */
 let libMode=0,filterS=null,filterM=null;
 function renderLibrary(){
   let h=`<div style="height:8px"></div><div class="seg">
-    <button class="${libMode===0?'on':''}" data-act="libmode" data-v="0">🧭 Sıradaki</button>
-    <button class="${libMode===1?'on':''}" data-act="libmode" data-v="1">≣ Tüm egzersizler</button></div><div style="height:8px"></div>`;
-  h+=libMode===0?libNext():libBrowse();return h;
+    <button class="${libMode===0?'on':''}" data-act="libmode" data-v="0">🗓️ Haftalık</button>
+    <button class="${libMode===1?'on':''}" data-act="libmode" data-v="1">🧭 Öneriler</button>
+    <button class="${libMode===2?'on':''}" data-act="libmode" data-v="2">≣ Egzersizler</button></div><div style="height:8px"></div>`;
+  h+=libMode===0?libWeekly():libMode===1?libNext():libBrowse();return h;
+}
+function daySystems(exs,d){const set=[];for(const e of exs){const t=target(e,weekDate(1,d));if(!t)continue;for(const s in e.systems)if(e.systems[s]>=1&&!set.includes(s))set.push(s);}return set;}
+function libWeekly(){
+  let h=sec('Haftalık program','Bir egzersizi eklediğin/çıkardığın gün, tekrar eden haftalık şablona işlenir ve Bugün, Denge, İlerleme ile eşitlenir.');
+  h+=programAdvice();
+  for(let d=1;d<=7;d++){
+    const exs=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
+    let sets=0;for(const e of exs){const t=target(e,weekDate(1,d));sets+=t?t.sets:0;}
+    const sys=daySystems(exs,d);
+    h+=`<div class="card tight">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1"><div style="font-weight:600">${kDayNames[d-1]} <span class="muted tiny">· ${esc(kSessions[d])}</span></div>
+          <div class="muted tiny">${exs.length} egzersiz · ${sets} set</div></div>
+        <button class="text" data-act="addday" data-d="${d}">＋ Ekle</button></div>`;
+    if(exs.length)for(const e of exs){const t=target(e,weekDate(1,d));
+      h+=`<div class="mrow"><div style="flex:1;font-size:13.5px">${esc(e.name)} <span class="muted tiny">${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div>
+        <button class="iconbtn" data-act="rmday" data-id="${e.id}" data-d="${d}" style="width:30px;height:30px;font-size:17px" title="Bu günden çıkar">×</button></div>`;}
+    else h+=`<div class="muted small" style="padding:6px 2px">Boş gün — toparlanma veya hafif hareket.</div>`;
+    if(sys.length)h+=`<div class="tags" style="margin-top:6px">${sys.map(s=>tag(SINFO[s].label,SINFO[s].color,SINFO[s].icon)).join('')}</div>`;
+    h+=`</div>`;
+  }
+  return h;
+}
+function programAdvice(){
+  const sched={};for(let d=1;d<=7;d++)sched[d]=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
+  const notes=[];
+  for(const s of S_ORDER){const need=SINFO[s].hours;if(need<48)continue;
+    const days=[];for(let d=1;d<=7;d++)if(sched[d].some(e=>(e.systems[s]||0)>=1))days.push(d);
+    if(days.length<2)continue;
+    let minGap=7;for(let i=0;i<days.length;i++){let g=(days[(i+1)%days.length]-days[i]+7)%7;if(g===0)g=7;if(g<minGap)minGap=g;}
+    if(minGap*24<need)notes.push({c:'var(--orange)',i:'⚠️',t:`${SINFO[s].label} ${days.map(x=>kDayShort[x-1]).join(', ')} günlerinde ana uyaran alıyor; toparlanması ~${need} saat. Aralarında en az ${Math.ceil(need/24)} gün bırak.`});
+  }
+  const psets=k=>{let n=0;for(let d=1;d<=7;d++)for(const e of sched[d])if(e.pattern.includes(k)){const t=target(e,weekDate(1,d));n+=t?t.sets:0;}return n;};
+  for(const p of [['İtme','itme','Çekme','çekme'],['Diz baskın','Diz baskın','Kalça baskın','Kalça baskın'],['Dikey çekme','Dikey çekme','Yatay çekme','Yatay çekme']]){
+    const a=psets(p[1]),b=psets(p[3]);
+    if(a>0&&b<a*0.5)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[0]} ${a} set · ${p[2]} ${b} set — ${p[2]} geride, dengele.`});
+    else if(b>0&&a<b*0.5)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[2]} ${b} set · ${p[0]} ${a} set — ${p[0]} geride, dengele.`});
+  }
+  const wm={};for(const m of M_ORDER)wm[m]=0;
+  for(let d=1;d<=7;d++)for(const e of sched[d]){const t=target(e,weekDate(1,d)),mult=t?t.sets:0;for(const m in e.muscles)wm[m]+=e.muscles[m]*mult;}
+  const untr=M_ORDER.filter(m=>wm[m]===0);
+  if(untr.length)notes.push({c:'var(--onvar)',i:'○',t:`Bu hafta hiç çalışmayan kas grupları: ${untr.map(m=>MINFO[m].label).join(', ')}.`});
+  const gtg=S.all().filter(e=>S.active.has(e.id)&&e.rpe<=5&&e.unit==='tekrar'&&e.days.length>=1&&e.days.length<=2);
+  if(gtg.length)notes.push({c:'var(--primary)',i:'💡',t:`GtG mantığıyla daha sık, düşük eforla yayabileceğin egzersizler: ${gtg.map(e=>e.name).join(', ')}. Haftada 4-7 güne dağıtmak bunlarda ilerlemeyi hızlandırır.`});
+  const hard=S.all().filter(e=>S.active.has(e.id)&&e.rpe>=8);
+  for(const e of hard){const ds=e.days.filter(d=>target(e,weekDate(1,d))!==null).sort((a,b)=>a-b);
+    let adj=false;for(let i=0;i<ds.length;i++){let g=(ds[(i+1)%ds.length]-ds[i]+7)%7;if(g===1)adj=true;}
+    if(adj){notes.push({c:'var(--orange)',i:'🔥',t:`${e.name} yüksek eforlu (RPE ${e.rpe}) ve ardışık günlerde. Araya en az bir gün dinlenme koy.`});break;}
+  }
+  if(!notes.length)notes.push({c:'var(--green)',i:'✓',t:'Program dengeli: sistem toparlanmaları, kalıp dengesi ve kas dağılımı uygun görünüyor.'});
+  let h='';for(const n of notes)h+=noteBox(n.t,{color:n.c,icon:n.i});
+  return h;
+}
+function openDayPicker(d){
+  const avail=S.all().filter(e=>!e.days.includes(d)).sort((a,b)=>{const c=(S.active.has(b.id)?1:0)-(S.active.has(a.id)?1:0);return c!==0?c:(kGrpOrder[a.grp]??9)-(kGrpOrder[b.grp]??9);});
+  let list='';for(const e of avail)list+=`<button class="chip" data-act="pickday" data-id="${e.id}" data-d="${d}" style="display:block;width:100%;text-align:left;margin-bottom:6px">${S.active.has(e.id)?'':'＋ '}${esc(e.name)} <span class="muted tiny">· ${esc(e.pattern)}</span></button>`;
+  openSheet(`<div class="title-lg">${kDayNames[d-1]} — egzersiz ekle</div>
+    <div class="muted small" style="margin:8px 0 12px">Seçtiğin egzersiz bu güne eklenir (gerekirse programa alınır). Tekrar eden her hafta için geçerlidir.</div>
+    ${list||'<div class="muted small">Tüm egzersizler bu güne ekli.</div>'}
+    <div style="height:8px"></div><button class="text block" data-act="addcustom">＋ Yeni egzersiz oluştur</button>`);
 }
 function libNext(){
   const ml=muscleLoad(7),sl=systemLoad(7);
@@ -614,8 +683,8 @@ function libBrowse(){
 }
 
 /* ══════════════ RENDER + NAV ══════════════ */
-const TABS=['Bugün','Denge','İlerleme','Rekor','Sıradaki'];
-const NAVIC=['📅','🎯','📈','🏅','🧭'];
+const TABS=['Bugün','Denge','İlerleme','Rekor','Program'];
+const NAVIC=['📅','🎯','📈','🏅','🗓️'];
 const PAGES=[renderToday,renderBalance,renderProgress,renderMax,renderLibrary];
 let tab=0;
 function render(){
@@ -701,6 +770,9 @@ function openEditor(id){
     auxS:new Set(base?Object.keys(base.systems).filter(k=>base.systems[k]<1):[])};
   const tg=base?base.targets.map(t=>({sets:t.sets,v:t.v})):[{sets:3,v:10}];while(tg.length<4)tg.push({sets:tg[0].sets,v:tg[0].v});
   const flat=tg.every(t=>t.sets===tg[0].sets&&t.v===tg[0].v);
+  const auto=flat?null:detectAuto(tg);
+  const tmode={m:flat?'flat':auto?'auto':'manual'};
+  const aI=auto?auto.inc:(st.unit==='tekrar'?1:5),aP=auto?auto.pct:70,aB=auto?auto.base:tg[0].v,aS=auto?auto.sets:tg[0].sets;
   const patterns=[...new Set(kCatalog.map(e=>e.pattern))];
   const chip=(items,set,attr,aux)=>items.map(([v,l])=>`<button type="button" class="chip ${aux?'aux ':''}${set.has(v)?'sel':''}" ${attr}="${v}">${l}</button>`).join('');
   const mItems=M_ORDER.map(m=>[m,esc(MINFO[m].label)]),sItems=S_ORDER.map(s=>[s,SINFO[s].icon+' '+esc(SINFO[s].label)]),dItems=[1,2,3,4,5,6,7].map(i=>[i,kDayShort[i-1]]);
@@ -715,12 +787,20 @@ function openEditor(id){
     <label class="fld">Birim</label>
     <div class="seg" id="eunit"><button type="button" class="${st.unit==='tekrar'?'on':''}" data-u="tekrar">tekrar</button><button type="button" class="${st.unit==='sn'?'on':''}" data-u="sn">sn</button><button type="button" class="${st.unit==='dk'?'on':''}" data-u="dk">dk</button></div>
     ${sec('Set ve tekrar')}
-    <div class="swrow"><label class="sw"><input type="checkbox" id="eflat" ${flat?'checked':''}><span class="tr"></span><span class="kn"></span></label><div>Tüm haftalarda aynı</div></div>
-    <div id="esimple" style="display:${flat?'block':'none'}">
+    <div class="seg" id="etmode"><button type="button" class="${tmode.m==='flat'?'on':''}" data-tm="flat">Sabit</button><button type="button" class="${tmode.m==='auto'?'on':''}" data-tm="auto">Otomatik</button><button type="button" class="${tmode.m==='manual'?'on':''}" data-tm="manual">Elle</button></div>
+    <div id="pflat" style="display:${tmode.m==='flat'?'block':'none'};margin-top:10px">
       <div style="display:flex;gap:12px"><div style="flex:1"><label class="fld">Set</label><input type="number" id="ss" value="${tg[0].sets}"></div>
         <div style="flex:1"><label class="fld" id="svl">Değer (${esc(st.unit)})</label><input type="number" id="sv" value="${fmt(tg[0].v)}"></div></div>
     </div>
-    <div id="eadv" style="display:${flat?'none':'block'}">
+    <div id="pauto" style="display:${tmode.m==='auto'?'block':'none'};margin-top:10px">
+      <div class="muted tiny" style="margin-bottom:8px">Başlangıç haftasını gir; 2. ve 3. hafta artar, deload düşer. Grease the Groove: küçük artış, düşük efor.</div>
+      <div style="display:flex;gap:12px"><div style="flex:1"><label class="fld">Set</label><input type="number" id="asets" value="${aS}"></div>
+        <div style="flex:1"><label class="fld" id="abl">Başlangıç (${esc(st.unit)})</label><input type="number" id="abase" value="${fmt(aB)}"></div></div>
+      <div style="display:flex;gap:12px;margin-top:10px"><div style="flex:1"><label class="fld">Haftalık artış (+)</label><input type="number" id="ainc" value="${fmt(aI)}"></div>
+        <div style="flex:1"><label class="fld">Deload yükü (%)</label><input type="number" id="apct" value="${aP}"></div></div>
+      <div id="aprev" class="muted small" style="margin-top:10px"></div>
+    </div>
+    <div id="pmanual" style="display:${tmode.m==='manual'?'block':'none'};margin-top:10px">
       <div class="grid4"><div></div><div class="gh">Set</div><div class="gh">Değer</div>
         <div class="gh">Hafta 1</div><input type="number" id="ts0" value="${tg[0].sets}"><input type="number" id="tv0" value="${fmt(tg[0].v)}">
         <div class="gh">Hafta 2</div><input type="number" id="ts1" value="${tg[1].sets}"><input type="number" id="tv1" value="${fmt(tg[1].v)}">
@@ -748,18 +828,33 @@ function openEditor(id){
   // wiring
   overlay.querySelector('#eunit').onclick=ev=>{const b=ev.target.closest('[data-u]');if(!b)return;st.unit=b.dataset.u;
     overlay.querySelectorAll('#eunit button').forEach(x=>x.classList.toggle('on',x===b));
-    const sv=overlay.querySelector('#svl');if(sv)sv.textContent=`Değer (${st.unit})`;};
-  overlay.querySelector('#eflat').onchange=ev=>{overlay.querySelector('#esimple').style.display=ev.target.checked?'block':'none';overlay.querySelector('#eadv').style.display=ev.target.checked?'none':'block';};
+    const sv=overlay.querySelector('#svl');if(sv)sv.textContent=`Değer (${st.unit})`;
+    const ab=overlay.querySelector('#abl');if(ab)ab.textContent=`Başlangıç (${st.unit})`;};
+  const num=el=>parseFloat((overlay.querySelector(el).value||'').replace(',','.'));
+  const autoPrev=()=>{const s=parseInt(overlay.querySelector('#asets').value,10),b=num('#abase'),i=num('#ainc'),p=num('#apct');
+    const pv=overlay.querySelector('#aprev');if(!pv)return;
+    if(isNaN(s)||isNaN(b)||isNaN(i)||isNaN(p)){pv.textContent='Önizleme için alanları doldur.';return;}
+    const t=autoTargets(s,b,i,p);pv.innerHTML='Önizleme → '+t.map((x,k)=>`<b>${['H1','H2','H3','Deload'][k]}</b> ${x.sets}×${fmt(x.v)}`).join(' · ');};
+  overlay.querySelector('#etmode').onclick=ev=>{const b=ev.target.closest('[data-tm]');if(!b)return;tmode.m=b.dataset.tm;
+    overlay.querySelectorAll('#etmode button').forEach(x=>x.classList.toggle('on',x===b));
+    overlay.querySelector('#pflat').style.display=tmode.m==='flat'?'block':'none';
+    overlay.querySelector('#pauto').style.display=tmode.m==='auto'?'block':'none';
+    overlay.querySelector('#pmanual').style.display=tmode.m==='manual'?'block':'none';
+    if(tmode.m==='auto')autoPrev();};
+  ['#asets','#abase','#ainc','#apct'].forEach(s=>{const el=overlay.querySelector(s);if(el)el.oninput=autoPrev;});
+  autoPrev();
   const grp=(sel,set,ds)=>overlay.querySelectorAll(sel+' [data-'+ds+']').forEach(b=>b.onclick=()=>{const raw=b.dataset[ds];const v=ds==='cd'?+raw:raw;if(set.has(v))set.delete(v);else set.add(v);b.classList.toggle('sel');});
   grp('#edays',st.days,'cd');grp('#eprim',st.prim,'m');grp('#eaux',st.aux,'m');grp('#eprims',st.primS,'s');grp('#eauxs',st.auxS,'s');
   overlay.querySelector('#erpe').oninput=ev=>{st.rpe=+ev.target.value;overlay.querySelector('#erh').textContent=`Varsayılan zorluk (RPE): ${st.rpe}`;};
   overlay.querySelector('#esave').onclick=()=>{
     const err=overlay.querySelector('#eerr'),name=overlay.querySelector('#ename').value.trim();
-    const num=el=>parseFloat((overlay.querySelector(el).value||'').replace(',','.'));
     let targets;
-    if(overlay.querySelector('#eflat').checked){const s=parseInt(overlay.querySelector('#ss').value,10),v=num('#sv');
+    if(tmode.m==='flat'){const s=parseInt(overlay.querySelector('#ss').value,10),v=num('#sv');
       if(!name||isNaN(s)||s<1||isNaN(v)||v<=0){err.textContent='Ad, set ve değer alanlarını doldur.';err.style.display='block';return;}
       targets=[{sets:s,v},{sets:s,v},{sets:s,v},{sets:s,v}];}
+    else if(tmode.m==='auto'){const s=parseInt(overlay.querySelector('#asets').value,10),b=num('#abase'),i=num('#ainc'),p=num('#apct');
+      if(!name||isNaN(s)||s<1||isNaN(b)||b<=0||isNaN(i)||isNaN(p)){err.textContent='Ad ve otomatik ilerleme alanlarını doldur.';err.style.display='block';return;}
+      targets=autoTargets(s,b,i,p);}
     else{targets=[];for(let i=0;i<4;i++){const s=parseInt(overlay.querySelector('#ts'+i).value,10),v=num('#tv'+i);
       if(isNaN(s)||s<0||isNaN(v)||v<0){err.textContent='Tüm hafta değerlerini doldur (set 0 = o hafta yok).';err.style.display='block';return;}targets.push({sets:s,v});}
       if(!name){err.textContent='Ad gir.';err.style.display='block';return;}
@@ -888,6 +983,9 @@ document.body.addEventListener('click',ev=>{
     case 'retest':openMax(id);break;
     case 'interval':openInterval();break;
     case 'libmode':libMode=+el.dataset.v;render();break;
+    case 'addday':openDayPicker(+el.dataset.d);break;
+    case 'rmday':removeDay(id,+el.dataset.d);break;
+    case 'pickday':addDay(id,+el.dataset.d);openDayPicker(+el.dataset.d);break;
     case 'fs':filterS=el.dataset.v||null;render();break;
     case 'fm':filterM=el.dataset.v||null;render();break;
     case 'toggle':toggleActive(id);break;
