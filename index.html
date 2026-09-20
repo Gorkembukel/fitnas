@@ -182,6 +182,21 @@ const kKinds=['Kilo (kg)','Bel çevresi (cm)','Dinlenik nabız (bpm)'];
 const kIntervals=[7,14,21,28,42,56];
 const kMonths=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const PHASE=[{t:'Hafta 1',c:'#3aa0a0'},{t:'Hafta 2',c:'#3a76d8'},{t:'Hafta 3',c:'#6a4ee0'},{t:'Deload',c:'#c9820b'}];
+const CFG_DEFAULT={
+  recovery:{sinir:48,kas:48,tendon:72,kemik:72,mobilite:24,reaktif:72,aerobik:24,anaerobik:48},
+  openBelow:1, lowBelow:8, window:7,
+  gapOpen:2, gapLow:1, gapAux:false, balanceRatio:0.5,
+  rpe:{f8:1,f7:0.75,f6:0.5,f5:0.35,f0:0.2}, impactFactor:0.75, lookbackHours:96,
+  halfDays:[3,7], gtgRpe:5, spaceMinHours:24
+};
+function mergeCfg(s){s=s||{};return {
+  recovery:Object.assign({},CFG_DEFAULT.recovery,s.recovery||{}),
+  openBelow:s.openBelow??CFG_DEFAULT.openBelow, lowBelow:s.lowBelow??CFG_DEFAULT.lowBelow, window:s.window??CFG_DEFAULT.window,
+  gapOpen:s.gapOpen??CFG_DEFAULT.gapOpen, gapLow:s.gapLow??CFG_DEFAULT.gapLow, gapAux:s.gapAux??CFG_DEFAULT.gapAux, balanceRatio:s.balanceRatio??CFG_DEFAULT.balanceRatio,
+  rpe:Object.assign({},CFG_DEFAULT.rpe,s.rpe||{}), impactFactor:s.impactFactor??CFG_DEFAULT.impactFactor, lookbackHours:s.lookbackHours??CFG_DEFAULT.lookbackHours,
+  halfDays:Array.isArray(s.halfDays)?s.halfDays.slice():CFG_DEFAULT.halfDays.slice(), gtgRpe:s.gtgRpe??CFG_DEFAULT.gtgRpe, spaceMinHours:s.spaceMinHours??CFG_DEFAULT.spaceMinHours
+};}
+function recHours(s){return S.cfg.recovery[s]!=null?S.cfg.recovery[s]:CFG_DEFAULT.recovery[s];}
 const all7=[1,2,3,4,5,6,7];
 
 /* ══════════════ KATALOG ══════════════ */
@@ -231,13 +246,13 @@ const fmt=v=>Number.isInteger(v)?String(v):v.toFixed(1);
 const sameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const daysSince=ts=>Math.floor((Date.now()-ts)/86400000);
-function status(v){return v<1?{t:'Açıkta',c:'var(--red)'}:v<8?{t:'Düşük',c:'var(--orange)'}:{t:'İyi',c:'var(--green)'};}
+function status(v){const c=S.cfg;return v<c.openBelow?{t:'Açıkta',c:'var(--red)'}:v<c.lowBelow?{t:'Düşük',c:'var(--orange)'}:{t:'İyi',c:'var(--green)'};}
 
 /* ══════════════ DURUM ══════════════ */
 const KEY='antrenman_takip_v2';
 const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, schedLog:[], _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], cfg:mergeCfg(), _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
@@ -255,7 +270,7 @@ function customToJ(e){return {id:e.id,def:defOf(e)};}
 function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
   muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note});}
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
-  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,custom:S.custom.map(customToJ),
+  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,cfg:S.cfg,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
 function applyState(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
@@ -264,7 +279,7 @@ function applyState(d){
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];
+  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.cfg=mergeCfg(d.cfg);
   S._updatedAt=d.updatedAt||Date.now();
 }
 function load(){
@@ -278,7 +293,7 @@ function load(){
 function migrateV1(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];
+  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.cfg=mergeCfg();
   S.custom=(d.custom||[]).map(j=>{const muscles={},systems={};for(const n of (j.m||[]))muscles[n]=1;for(const n of (j.s||[]))systems[n]=1;
     const t={sets:j.sets,v:j.v};return E(j.id,j.name,{pattern:j.pattern||'Özel',unit:j.unit,grp:'Özel',custom:true,muscles,systems,days:j.days,targets:[t,{...t},{...t},{...t}],rpe:j.rpe});});
   S.reindex();
@@ -366,7 +381,7 @@ function target(e,d){
   if(t.sets===0)return null;
   const cycle=Math.floor((w-1)/4);
   let v=t.v+e.step*cycle, sets=t.sets, wd=weekday(d);
-  if(e.halfRec&&(wd===3||wd===7))sets=Math.max(1,Math.ceil(sets/2));
+  if(e.halfRec&&S.cfg.halfDays.includes(wd))sets=Math.max(1,Math.ceil(sets/2));
   return {sets,v};
 }
 const catIndex=e=>S.all().indexOf(e);
@@ -393,7 +408,8 @@ function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 function setStart(d){S.start=dOnly(d);changed();}
 function setTestInterval(n){S.testInterval=n;changed();}
 function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+function resetCfg(){S.cfg=mergeCfg();changed();}
 /* ── egzersiz düzenleme ── */
 function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(newD);
   for(const d of n)if(!o.has(d))S.schedLog.push({e:id,d,op:'add',t:now});
@@ -415,23 +431,24 @@ function lastMax(id){const h=maxHistory(id);return h.length?h[h.length-1]:null;}
 function maxDue(id){const lm=lastMax(id);return lm?daysSince(lm.t)>=S.testInterval:true;}
 /* ── sorgular ── */
 function countOn(id,d){return S.logs.filter(l=>l.e===id&&sameDay(dt(l),d)).length;}
-function muscleLoad(days){const from=Date.now()-days*86400000;const r={};for(const m of M_ORDER)r[m]=0;
+function muscleLoad(days){days=days??S.cfg.window;const from=Date.now()-days*86400000;const r={};for(const m of M_ORDER)r[m]=0;
   for(const l of S.logs){if(l.t<from)continue;const e=S.ex(l.e);if(!e)continue;for(const m in e.muscles)r[m]+=e.muscles[m];}return r;}
-function systemLoad(days){const from=Date.now()-days*86400000;const r={};for(const s of S_ORDER)r[s]=0;
+function systemLoad(days){days=days??S.cfg.window;const from=Date.now()-days*86400000;const r={};for(const s of S_ORDER)r[s]=0;
   for(const l of S.logs){if(l.t<from)continue;const e=S.ex(l.e);if(!e)continue;for(const s in e.systems)r[s]+=e.systems[s];}return r;}
-function patternSets(key,days){const from=Date.now()-days*86400000;let n=0;
+function patternSets(key,days){days=days??S.cfg.window;const from=Date.now()-days*86400000;let n=0;
   for(const l of S.logs){if(l.t<from)continue;const e=S.ex(l.e);if(e&&e.pattern.includes(key))n++;}return n;}
-function recLeft(s){const now=Date.now();let left=0;
-  for(let i=S.logs.length-1;i>=0;i--){const l=S.logs[i];const ageMs=now-l.t;if(Math.floor(ageMs/3600000)>96)break;
+function recLeft(s){const now=Date.now();let left=0;const R=S.cfg;
+  for(let i=S.logs.length-1;i>=0;i--){const l=S.logs[i];const ageMs=now-l.t;if(Math.floor(ageMs/3600000)>R.lookbackHours)break;
     const e=S.ex(l.e);if(!e)continue;if((e.systems[s]||0)<1)continue;
-    let f=l.r>=8?1:l.r===7?.75:l.r===6?.5:l.r===5?.35:.2;
-    if(e.impact&&(s==='tendon'||s==='kemik'||s==='reaktif'))f=Math.max(f,.75);
-    const rem=SINFO[s].hours*f-ageMs/3600000;if(rem>left)left=rem;}return left;}
+    let f=l.r>=8?R.rpe.f8:l.r===7?R.rpe.f7:l.r===6?R.rpe.f6:l.r===5?R.rpe.f5:R.rpe.f0;
+    if(e.impact&&(s==='tendon'||s==='kemik'||s==='reaktif'))f=Math.max(f,R.impactFactor);
+    const rem=recHours(s)*f-ageMs/3600000;if(rem>left)left=rem;}return left;}
 function bestOf(id){let b=null;for(const l of S.logs)if(l.e===id&&(b===null||l.v>b))b=l.v;
   for(const m of S.maxes)if(m.e===id&&(b===null||m.v>b))b=m.v;return b;}
 function prereqMet(e){if(!e.prereqId)return null;const b=bestOf(e.prereqId);return b!==null&&b>=e.prereqValue;}
-function gapScore(e,ml,sl){let g=0;for(const m in e.muscles){if(e.muscles[m]>=1)g+=ml[m]<1?2:ml[m]<8?1:0;}
-  for(const s in e.systems){if(e.systems[s]>=1)g+=sl[s]<1?2:sl[s]<8?1:0;}return g;}
+function gapScore(e,ml,sl){const R=S.cfg;
+  const sc=(load,w)=>{const pts=load<R.openBelow?R.gapOpen:load<R.lowBelow?R.gapLow:0;return R.gapAux?pts*w:(w>=1?pts:0);};
+  let g=0;for(const m in e.muscles)g+=sc(ml[m],e.muscles[m]);for(const s in e.systems)g+=sc(sl[s],e.systems[s]);return g;}
 function streak(){let d=dOnly(new Date());const days=new Set(S.logs.map(l=>dayKey(dt(l))));
   if(!days.has(dayKey(d)))d=new Date(d.getTime()-86400000);let n=0;while(days.has(dayKey(d))){n++;d=new Date(d.getTime()-86400000);}return n;}
 /* ── takvim / plan (tarihe duyarlı) ── */
@@ -505,32 +522,33 @@ function exTile(e,day){
 
 /* ══════════════ DENGE ══════════════ */
 function renderBalance(){
-  const ml=muscleLoad(7),sl=systemLoad(7);
+  const W=S.cfg.window,ml=muscleLoad(W),sl=systemLoad(W);
   const maxM=Math.max(1,...Object.values(ml)),maxS=Math.max(1,...Object.values(sl));
   const regions=[];for(const m of M_ORDER)if(!regions.includes(MINFO[m].region))regions.push(MINFO[m].region);
-  let h=sec('Kas grupları','Son 7 gün · ağırlıklı set (ana kas 1, yardımcı 0,5)');
+  let h=sec('Kas grupları',`Son ${W} gün · ağırlıklı set (ana kas 1, yardımcı 0,5)`);
   for(const r of regions){h+=`<div class="subhdr">${esc(r)}</div>`;
     for(const m of M_ORDER)if(MINFO[m].region===r){const st=status(ml[m]);
       h+=`<div class="mrow"><div class="ml">${esc(MINFO[m].label)}</div><div style="flex:1">${barHtml(ml[m]/maxM,{color:st.c,bg:'var(--surfhi)'})}</div><div class="mv" style="color:${st.c}">${fmt(ml[m])} · ${st.t}</div></div>`;}}
-  h+=sec('Kalıp dengesi','Son 7 gün · set sayısı');
+  h+=sec('Kalıp dengesi',`Son ${W} gün · set sayısı`);
   const pairs=[['İtme','itme','Çekme','çekme'],['Diz baskın','Diz baskın','Kalça baskın','Kalça baskın'],['Dikey çekme','Dikey çekme','Yatay çekme','Yatay çekme']];
-  for(const p of pairs){const a=patternSets(p[1],7),b=patternSets(p[3],7);const low=a>0&&b<a*0.5?p[2]:(b>0&&a<b*0.5?p[0]:null);
+  const rr=S.cfg.balanceRatio;
+  for(const p of pairs){const a=patternSets(p[1],W),b=patternSets(p[3],W);const low=a>0&&b<a*rr?p[2]:(b>0&&a<b*rr?p[0]:null);
     h+=noteBox(`${p[0]} ${a} set · ${p[2]} ${b} set${low?'  →  '+low+' geride':''}`,{color:low?'var(--orange)':'var(--green)',icon:low?'⚖️':'✓'});}
-  h+=sec('Sistemler','Uyaran (son 7 gün) ve toparlanma durumu');
+  h+=sec('Sistemler',`Uyaran (son ${W} gün) ve toparlanma durumu`);
   for(const s of S_ORDER){const st=status(sl[s]);const rl=recLeft(s);
     h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:22px">${SINFO[s].icon}</div>
-      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)}</div>
+      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)} · ${recHours(s)} sa</div>
         <div style="margin-top:6px">${barHtml(sl[s]/maxS,{color:SINFO[s].color,cls:'md',bg:'var(--surfhi)'})}</div></div>
       <div style="text-align:right;min-width:70px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(sl[s])} · ${st.t}</div>
         <div style="margin-top:4px;display:flex;justify-content:flex-end">${rl<1?tag('Hazır','var(--green)'):tag('~'+Math.round(rl)+' sa','var(--orange)','⏳')}</div></div></div></div>`;}
   h+=sec('Bugün için öneri');
   const ready=S_ORDER.filter(s=>recLeft(s)<1).sort((a,b)=>sl[a]-sl[b]);
-  const focus=ready.filter(s=>sl[s]<8).slice(0,2);
+  const focus=ready.filter(s=>sl[s]<S.cfg.lowBelow).slice(0,2);
   if(focus.length===0)h+=noteBox('Hazır olan sistemlerin hepsi haftalık uyaranda yeterli görünüyor. Planı takip et.',{color:'var(--green)',icon:'✓'});
   else h+=noteBox(`${focus.map(s=>SINFO[s].label).join(' ve ')} toparlanmış ve haftalık uyaranı düşük. Bugün bunlara ağırlık verebilirsin.`,{icon:'💡'});
-  const cands=S.all().filter(e=>!S.active.has(e.id)&&e.block!==null).sort((a,b)=>gapScore(b,ml,sl)-gapScore(a,ml,sl));
-  if(cands.length&&gapScore(cands[0],ml,sl)>0)h+=noteBox(`Boşluğu en çok kapatacak aday: ${cands.slice(0,2).map(e=>e.name).join(', ')}. Detay Sıradaki sekmesinde.`,{icon:'🧭'});
-  h+=`<div class="muted" style="font-size:12px;line-height:1.45;margin-top:6px">Eşikler: 1 altı açıkta, 8 altı düşük. Toparlanma süresi, RPE'ye ve darbe yüküne göre sistemin standart süresinden (24-72 sa) hesaplanır. Tahmindir, kendi hissinle birlikte oku.</div>`;
+  const cands=S.all().filter(e=>!S.active.has(e.id)&&(e.block!==null||e.custom)).sort((a,b)=>gapScore(b,ml,sl)-gapScore(a,ml,sl));
+  if(cands.length&&gapScore(cands[0],ml,sl)>0)h+=noteBox(`Boşluğu en çok kapatacak aday: ${cands.slice(0,2).map(e=>e.name).join(', ')}. Detay Program sekmesinde.`,{icon:'🧭'});
+  h+=`<div class="muted" style="font-size:12px;line-height:1.45;margin-top:6px">Eşikler: ${fmt(S.cfg.openBelow)} altı açıkta, ${fmt(S.cfg.lowBelow)} altı düşük. Bu değerler ve toparlanma saatleri Ayarlar → Analiz ve kurallar'dan değiştirilebilir. Tahmindir, kendi hissinle birlikte oku.</div>`;
   return h;
 }
 
@@ -585,7 +603,7 @@ function renderPanel(){
   h+=sec('Kalıp dengesi','Bu ay set sayısı');
   const pm=k=>{let n=0;for(const l of A.logs){const e=S.ex(l.e);if(e&&e.pattern.includes(k))n++;}return n;};
   for(const p of [['İtme','itme','Çekme','çekme'],['Diz baskın','Diz baskın','Kalça baskın','Kalça baskın']]){
-    const a=pm(p[1]),b=pm(p[3]);const low=a>0&&b<a*0.5?p[2]:(b>0&&a<b*0.5?p[0]:null);
+    const a=pm(p[1]),b=pm(p[3]);const low=a>0&&b<a*S.cfg.balanceRatio?p[2]:(b>0&&a<b*S.cfg.balanceRatio?p[0]:null);
     h+=noteBox(`${p[0]} ${a} · ${p[2]} ${b}${low?'  →  '+low+' geride':''}`,{color:low?'var(--orange)':'var(--green)',icon:low?'⚖️':'✓'});}
   if(A.sets===0)h+=noteBox('Bu ay henüz kayıt yok.',{icon:'📭'});
   return h;
@@ -755,23 +773,24 @@ function libWeekly(){
 function programAdvice(){
   const sched={};for(let d=1;d<=7;d++)sched[d]=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
   const notes=[];
-  for(const s of S_ORDER){const need=SINFO[s].hours;if(need<48)continue;
+  for(const s of S_ORDER){const need=recHours(s);if(need<=S.cfg.spaceMinHours)continue;
     const days=[];for(let d=1;d<=7;d++)if(sched[d].some(e=>(e.systems[s]||0)>=1))days.push(d);
     if(days.length<2)continue;
     let minGap=7;for(let i=0;i<days.length;i++){let g=(days[(i+1)%days.length]-days[i]+7)%7;if(g===0)g=7;if(g<minGap)minGap=g;}
     if(minGap*24<need)notes.push({c:'var(--orange)',i:'⚠️',t:`${SINFO[s].label} ${days.map(x=>kDayShort[x-1]).join(', ')} günlerinde ana uyaran alıyor; toparlanması ~${need} saat. Aralarında en az ${Math.ceil(need/24)} gün bırak.`});
   }
+  const rr=S.cfg.balanceRatio;
   const psets=k=>{let n=0;for(let d=1;d<=7;d++)for(const e of sched[d])if(e.pattern.includes(k)){const t=target(e,weekDate(1,d));n+=t?t.sets:0;}return n;};
   for(const p of [['İtme','itme','Çekme','çekme'],['Diz baskın','Diz baskın','Kalça baskın','Kalça baskın'],['Dikey çekme','Dikey çekme','Yatay çekme','Yatay çekme']]){
     const a=psets(p[1]),b=psets(p[3]);
-    if(a>0&&b<a*0.5)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[0]} ${a} set · ${p[2]} ${b} set — ${p[2]} geride, dengele.`});
-    else if(b>0&&a<b*0.5)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[2]} ${b} set · ${p[0]} ${a} set — ${p[0]} geride, dengele.`});
+    if(a>0&&b<a*rr)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[0]} ${a} set · ${p[2]} ${b} set — ${p[2]} geride, dengele.`});
+    else if(b>0&&a<b*rr)notes.push({c:'var(--orange)',i:'⚖️',t:`${p[2]} ${b} set · ${p[0]} ${a} set — ${p[0]} geride, dengele.`});
   }
   const wm={};for(const m of M_ORDER)wm[m]=0;
   for(let d=1;d<=7;d++)for(const e of sched[d]){const t=target(e,weekDate(1,d)),mult=t?t.sets:0;for(const m in e.muscles)wm[m]+=e.muscles[m]*mult;}
   const untr=M_ORDER.filter(m=>wm[m]===0);
   if(untr.length)notes.push({c:'var(--onvar)',i:'○',t:`Bu hafta hiç çalışmayan kas grupları: ${untr.map(m=>MINFO[m].label).join(', ')}.`});
-  const gtg=S.all().filter(e=>S.active.has(e.id)&&e.rpe<=5&&e.unit==='tekrar'&&e.days.length>=1&&e.days.length<=2);
+  const gtg=S.all().filter(e=>S.active.has(e.id)&&e.rpe<=S.cfg.gtgRpe&&e.unit==='tekrar'&&e.days.length>=1&&e.days.length<=2);
   if(gtg.length)notes.push({c:'var(--primary)',i:'💡',t:`GtG mantığıyla daha sık, düşük eforla yayabileceğin egzersizler: ${gtg.map(e=>e.name).join(', ')}. Haftada 4-7 güne dağıtmak bunlarda ilerlemeyi hızlandırır.`});
   const hard=S.all().filter(e=>S.active.has(e.id)&&e.rpe>=8);
   for(const e of hard){const ds=e.days.filter(d=>target(e,weekDate(1,d))!==null).sort((a,b)=>a-b);
@@ -791,25 +810,27 @@ function openDayPicker(d){
     <div style="height:8px"></div><button class="text block" data-act="addcustom">＋ Yeni egzersiz oluştur</button>`);
 }
 function libNext(){
-  const ml=muscleLoad(7),sl=systemLoad(7);
-  const cands=S.all().filter(e=>!S.active.has(e.id)&&e.block!==null).sort((a,b)=>{
+  const W=S.cfg.window,ml=muscleLoad(W),sl=systemLoad(W);
+  const cands=S.all().filter(e=>!S.active.has(e.id)&&(e.block!==null||e.custom)).sort((a,b)=>{
     const ma=prereqMet(a)===false?0:1,mb=prereqMet(b)===false?0:1;if(ma!==mb)return mb-ma;return gapScore(b,ml,sl)-gapScore(a,ml,sl);});
-  let h=sec('Başlayabileceğin egzersizler','Önce kriteri sağlayanlar, sonra açık bıraktığın alanı en çok kapatanlar');
-  if(!cands.length)h+=noteBox('Tüm adaylar programda. Tüm egzersizler sekmesinden kendi egzersizini ekleyebilirsin.');
-  for(const e of cands){const met=prereqMet(e);let gaps='';
-    for(const m in e.muscles)if(e.muscles[m]>=1&&ml[m]<8)gaps+=tag(`${MINFO[m].label}: ${status(ml[m]).t.toLowerCase()}`,'var(--red)');
-    for(const s in e.systems)if(e.systems[s]>=1&&sl[s]<8)gaps+=tag(`${SINFO[s].label}: ${status(sl[s]).t.toLowerCase()}`,'var(--red)');
-    const best=e.prereqId?bestOf(e.prereqId):null;const micon=met===true?'✅':met===false?'🔒':'❔';
+  let h=sec('Başlayabileceğin egzersizler','Önce kriteri sağlayanlar, sonra açık bıraktığın alanı en çok kapatanlar. Programdan çıkardığın özel egzersizler de burada, boşluğuna göre sıralanır.');
+  if(!cands.length)h+=noteBox('Şu an aday yok. Tüm egzersizler sekmesinden yeni bir egzersiz oluşturabilir; oradaki bir egzersizi programdan çıkarırsan boşluğuna göre burada önerilir.');
+  const LB=S.cfg.lowBelow;
+  for(const e of cands){const met=prereqMet(e),hasCrit=!!(e.prereqId||e.prereqText);let gaps='';
+    for(const m in e.muscles)if(e.muscles[m]>=1&&ml[m]<LB)gaps+=tag(`${MINFO[m].label}: ${status(ml[m]).t.toLowerCase()}`,'var(--red)');
+    for(const s in e.systems)if(e.systems[s]>=1&&sl[s]<LB)gaps+=tag(`${SINFO[s].label}: ${status(sl[s]).t.toLowerCase()}`,'var(--red)');
+    const best=e.prereqId?bestOf(e.prereqId):null;const micon=!hasCrit?'➕':met===true?'✅':met===false?'🔒':'❔';
     const critExtra=met===false?`\nŞu an en iyi: ${best===null?'kayıt yok':fmt(best)}, hedef ${fmt(e.prereqValue)}`:'';
-    h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:16px;font-weight:600">${esc(e.name)}</div>${tag(e.block,'var(--primary)')}</div>
+    const critLine=hasCrit?`Kriter: ${esc(e.prereqText+critExtra)}`:'Kriteri yok — boşluğuna uyduğunda önerilir, istediğin zaman ekleyebilirsin.';
+    h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:16px;font-weight:600">${esc(e.name)}</div>${e.block?tag(e.block,'var(--primary)'):tag('Özel','var(--onvar)')}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(e.pattern)}</div>
       <div style="margin-top:8px">${exTags(e)}</div>
       ${e.fills?`<div style="margin-top:8px;font-size:13px">Kapattığı boşluk: ${esc(e.fills)}</div>`:''}
-      ${gaps?`<div class="tags" style="margin-top:6px">${gaps}</div>`:''}
+      ${gaps?`<div class="tags" style="margin-top:6px">${gaps}</div>`:'<div class="tags" style="margin-top:6px">'+tag('şu an belirgin boşluk kapatmıyor','var(--onvar)')+'</div>'}
       <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-start"><div style="font-size:18px;line-height:1.2">${micon}</div>
-        <div style="flex:1;font-size:13px;line-height:1.35;white-space:pre-line">Kriter: ${esc(e.prereqText+critExtra)}</div></div>
+        <div style="flex:1;font-size:13px;line-height:1.35;white-space:pre-line">${critLine}</div></div>
       ${e.note?`<div class="muted" style="font-size:12.5px;margin-top:6px">${esc(e.note)}</div>`:''}
-      <div class="muted" style="font-size:12.5px;margin-top:4px">Önerilen günler: ${e.days.map(d=>kDayShort[d-1]).join(', ')}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">Önerilen günler: ${e.days.length?e.days.map(d=>kDayShort[d-1]).join(', '):'—'}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button class="text" data-act="edit" data-id="${e.id}">✎ Düzenle</button>
         ${met===false?`<button class="out" data-act="toggle" data-id="${e.id}">Yine de ekle</button>`:`<button class="fill" data-act="toggle" data-id="${e.id}">Programa ekle</button>`}</div></div>`;}
@@ -1052,6 +1073,10 @@ function openSettings(){
       <div style="flex:1"><div style="font-weight:500">Bulut senkron</div><div class="muted small">${cloudStatusText()}</div></div>
       <span style="font-size:20px">›</span></div>
     <hr class="d">
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 4px;cursor:pointer" id="scfg"><div style="font-size:22px">🎛️</div>
+      <div style="flex:1"><div style="font-weight:500">Analiz ve kurallar</div><div class="muted small">Toparlanma, eşikler, öneri ve denge hesabının tüm sabitleri</div></div>
+      <span style="font-size:20px">›</span></div>
+    <hr class="d">
     <div style="display:flex;align-items:center;gap:16px;padding:12px 4px;cursor:pointer" id="stheme"><div style="font-size:22px">🌓</div>
       <div style="flex:1"><div style="font-weight:500">Tema</div><div class="muted small">Sistem / Açık / Koyu</div></div>
       <span class="chip sel" id="sthemev">${themeLabel()}</span></div>
@@ -1070,10 +1095,51 @@ function openSettings(){
   overlay.querySelector('#sint').onchange=ev=>setTestInterval(+ev.target.value);
   overlay.querySelector('#stheme').onclick=()=>{cycleTheme();overlay.querySelector('#sthemev').textContent=themeLabel();};
   overlay.querySelector('#scloud').onclick=()=>openCloud();
+  overlay.querySelector('#scfg').onclick=()=>openConfig();
   overlay.querySelector('#sreset').onclick=()=>{
     openDialog(`<div class="title-md">Tüm veriler silinsin mi?</div><div class="muted small" style="margin-top:8px">Bu işlem geri alınamaz.</div>
       <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:18px"><button class="text" data-close>Vazgeç</button><button class="fill" id="rdo">Sil</button></div>`);
     overlay.querySelector('#rdo').onclick=()=>{resetAll();closeOverlay();};};
+}
+function setCfg(path,val){const p=path.split('.');let o=S.cfg;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=val;changed();}
+function openConfig(){
+  const c=S.cfg;
+  const num=(label,id,val,step)=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0"><div style="flex:1;font-size:13.5px">${label}</div><input type="number" inputmode="decimal" id="${id}" value="${fmt(val)}" step="${step||1}" style="width:84px;text-align:center;padding:8px"></div>`;
+  let sys='';for(const s of S_ORDER)sys+=num(SINFO[s].icon+' '+esc(SINFO[s].label),'cf_rec_'+s,c.recovery[s],6);
+  const dayChips=[1,2,3,4,5,6,7].map(d=>`<button type="button" class="chip ${c.halfDays.includes(d)?'sel':''}" data-hd="${d}">${kDayShort[d-1]}</button>`).join('');
+  openSheet(`<div style="display:flex;align-items:center;gap:8px"><div class="title-lg" style="flex:1">🎛️ Analiz ve kurallar</div><button class="text" id="cfgreset">Varsayılan</button></div>
+   <div class="muted small" style="margin:6px 0 2px">Öneri, denge ve toparlanma hesaplarının tamamı bu değerlere göre çalışır. Değişiklikler anında uygulanır ve buluta eşitlenir.</div>
+   ${sec('Toparlanma süreleri (saat)','Bir sistemin ana uyaran sonrası kabaca kaç saatte toparlandığı')}${sys}
+   ${sec('Yük eşikleri (haftalık ağırlıklı set)')}
+   ${num('“Açıkta”: bu değerin altı','cf_openBelow',c.openBelow,0.5)}
+   ${num('“Düşük”: bu değerin altı','cf_lowBelow',c.lowBelow,1)}
+   ${num('Analiz penceresi (gün)','cf_window',c.window,1)}
+   ${sec('Öneri (boşluk) puanlama')}
+   <div class="swrow"><label class="sw"><input type="checkbox" id="cf_gapAux" ${c.gapAux?'checked':''}><span class="tr"></span><span class="kn"></span></label><div>Yardımcı (0,5) katkıları da hesaba kat</div></div>
+   ${num('Açıkta kalan hedefe puan','cf_gapOpen',c.gapOpen,1)}
+   ${num('Düşük kalan hedefe puan','cf_gapLow',c.gapLow,1)}
+   ${sec('Kalıp dengesi')}
+   ${num('Dengesizlik oranı (küçük taraf < oran × büyük)','cf_balanceRatio',c.balanceRatio,0.05)}
+   ${sec('Toparlanma modeli','RPE değerine göre süre çarpanı — 1 = tam toparlanma süresi')}
+   ${num('RPE 8+ çarpanı','cf_rpe_f8',c.rpe.f8,0.05)}
+   ${num('RPE 7 çarpanı','cf_rpe_f7',c.rpe.f7,0.05)}
+   ${num('RPE 6 çarpanı','cf_rpe_f6',c.rpe.f6,0.05)}
+   ${num('RPE 5 çarpanı','cf_rpe_f5',c.rpe.f5,0.05)}
+   ${num('RPE 4 ve altı çarpanı','cf_rpe_f0',c.rpe.f0,0.05)}
+   ${num('Darbe min çarpanı (tendon/kemik/reaktif)','cf_impactFactor',c.impactFactor,0.05)}
+   ${num('Geriye bakış penceresi (saat)','cf_lookbackHours',c.lookbackHours,12)}
+   ${sec('Diğer')}
+   ${num('Ardışık gün uyarısı eşiği (saat)','cf_spaceMinHours',c.spaceMinHours,6)}
+   ${num('GtG eşiği: RPE bu ve altı sık yayılabilir','cf_gtgRpe',c.gtgRpe,1)}
+   <div style="font-size:12.5px;color:var(--onvar);margin:10px 2px 4px">Yarım hacim günleri — “Çar/Paz yarım hacim” açık egzersizlerde set yarıya iner</div>
+   <div class="chipwrap" id="cf_halfDays">${dayChips}</div>
+   <div style="height:16px"></div>`);
+  const nmap={cf_openBelow:'openBelow',cf_lowBelow:'lowBelow',cf_window:'window',cf_gapOpen:'gapOpen',cf_gapLow:'gapLow',cf_balanceRatio:'balanceRatio',cf_impactFactor:'impactFactor',cf_lookbackHours:'lookbackHours',cf_spaceMinHours:'spaceMinHours',cf_gtgRpe:'gtgRpe',cf_rpe_f8:'rpe.f8',cf_rpe_f7:'rpe.f7',cf_rpe_f6:'rpe.f6',cf_rpe_f5:'rpe.f5',cf_rpe_f0:'rpe.f0'};
+  for(const id in nmap){const el=overlay.querySelector('#'+id);if(el)el.onchange=()=>{const v=parseFloat((el.value||'').replace(',','.'));if(!isNaN(v))setCfg(nmap[id],v);};}
+  for(const s of S_ORDER){const el=overlay.querySelector('#cf_rec_'+s);if(el)el.onchange=()=>{const v=parseFloat(el.value);if(!isNaN(v)&&v>0)setCfg('recovery.'+s,v);};}
+  const ga=overlay.querySelector('#cf_gapAux');if(ga)ga.onchange=()=>{S.cfg.gapAux=ga.checked;changed();};
+  overlay.querySelectorAll('#cf_halfDays [data-hd]').forEach(b=>b.onclick=()=>{const d=+b.dataset.hd,i=S.cfg.halfDays.indexOf(d);if(i>=0)S.cfg.halfDays.splice(i,1);else S.cfg.halfDays.push(d);b.classList.toggle('sel');changed();});
+  overlay.querySelector('#cfgreset').onclick=()=>{resetCfg();openConfig();};
 }
 function cloudStatusText(){
   if(!cloudLibReady()&&!cloudGetCfg())return 'Kapalı · GitHub Pages\'te aç';
