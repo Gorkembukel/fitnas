@@ -120,6 +120,27 @@ details.ex .body{padding:0 16px 14px}
 .grid4{display:grid;grid-template-columns:70px 1fr 1fr;gap:8px 10px;align-items:center}
 .grid4 .gh{font-size:11.5px;color:var(--onvar)}
 .grid4 input{padding:9px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal .wh{text-align:center;font-size:10.5px;color:var(--onvar);padding-bottom:2px}
+.cell{aspect-ratio:1;border-radius:10px;padding:4px 4px 3px;position:relative;display:flex;flex-direction:column;cursor:pointer;overflow:hidden;background:var(--surfhi)}
+.cell .dn{font-size:12px;font-weight:600;line-height:1}
+.cell.empty{background:transparent;cursor:default}
+.cell.today{outline:2px solid var(--primary);outline-offset:-2px}
+.cell.pre{opacity:.38}
+.cell .frac{font-size:9px;color:var(--onvar);margin-top:1px}
+.cell .chk{position:absolute;bottom:8px;right:4px;font-size:10px;color:var(--green);font-weight:700}
+.cell .dot{position:absolute;bottom:4px;left:5px;right:5px;height:4px;border-radius:2px;background:color-mix(in srgb,var(--onsurf) 12%,transparent);overflow:hidden}
+.cell .dot > i{display:block;height:100%;background:var(--green);border-radius:2px}
+.mk{position:absolute;top:3px;width:7px;height:7px;border-radius:50%}
+.mk.add{right:3px;background:var(--green);color:var(--green)}
+.mk.rem{left:3px;background:var(--red);color:var(--red)}
+.mk.fresh{animation:pmk 1.5s infinite}
+@keyframes pmk{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.lgd{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--onvar);align-items:center}
+.lgd .sw{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-2px}
+.lgd .d{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:-1px}
+.dsheet .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)}
+.dpill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:8px;display:inline-block}
 </style>
 </head>
 <body>
@@ -159,6 +180,8 @@ const kAreas=['Dirsek','Omuz','Bilek','Diz','Aşil','Bel'];
 const kAreaEx={'Dirsek':['chin','pullNeg','pullup','hang','row1'],'Omuz':['push','wallpush','wallhard','shadow','archer','clap'],'Bilek':['push','wallpush','wallhard','archer','clap'],'Diz':['squat','wallsit','bulgar','run','pogo'],'Aşil':['run','rope','pogo'],'Bel':['rdl1','row1','deadbug','carry']};
 const kKinds=['Kilo (kg)','Bel çevresi (cm)','Dinlenik nabız (bpm)'];
 const kIntervals=[7,14,21,28,42,56];
+const kMonths=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const PHASE=[{t:'Hafta 1',c:'#3aa0a0'},{t:'Hafta 2',c:'#3a76d8'},{t:'Hafta 3',c:'#6a4ee0'},{t:'Deload',c:'#c9820b'}];
 const all7=[1,2,3,4,5,6,7];
 
 /* ══════════════ KATALOG ══════════════ */
@@ -214,7 +237,7 @@ function status(v){return v<1?{t:'Açıkta',c:'var(--red)'}:v<8?{t:'Düşük',c:
 const KEY='antrenman_takip_v2';
 const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
@@ -232,7 +255,7 @@ function customToJ(e){return {id:e.id,def:defOf(e)};}
 function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
   muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note});}
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
-  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,custom:S.custom.map(customToJ),
+  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
 function applyState(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
@@ -241,7 +264,7 @@ function applyState(d){
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;
+  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];
   S._updatedAt=d.updatedAt||Date.now();
 }
 function load(){
@@ -255,7 +278,7 @@ function load(){
 function migrateV1(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.overrides={};S.maxes=[];S.testInterval=28;
+  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];
   S.custom=(d.custom||[]).map(j=>{const muscles={},systems={};for(const n of (j.m||[]))muscles[n]=1;for(const n of (j.s||[]))systems[n]=1;
     const t={sets:j.sets,v:j.v};return E(j.id,j.name,{pattern:j.pattern||'Özel',unit:j.unit,grp:'Özel',custom:true,muscles,systems,days:j.days,targets:[t,{...t},{...t},{...t}],rpe:j.rpe});});
   S.reindex();
@@ -362,7 +385,7 @@ const dt=l=>new Date(l.t);
 function addLog(id,v,r){S.logs.push({e:id,t:Date.now(),v,r});changed();}
 function undoLast(id){for(let i=S.logs.length-1;i>=0;i--){if(S.logs[i].e===id){S.logs.splice(i,1);break;}}changed();}
 function toggleActive(id){S.active.has(id)?S.active.delete(id):S.active.add(id);changed();}
-function removeCustom(id){S.custom=S.custom.filter(e=>e.id!==id);S.active.delete(id);delete S.overrides[id];S.reindex();changed();}
+function removeCustom(id){S.custom=S.custom.filter(e=>e.id!==id);S.active.delete(id);delete S.overrides[id];S.schedLog=S.schedLog.filter(z=>z.e!==id);S.reindex();changed();}
 function addDay(id,d){const e=S.ex(id);if(!e)return;const def=defOf(e);if(!def.days.includes(d)){def.days=[...def.days,d].sort((a,b)=>a-b);}S.active.add(id);saveExercise(id,def);}
 function removeDay(id,d){const e=S.ex(id);if(!e)return;const def=defOf(e);def.days=def.days.filter(x=>x!==d);saveExercise(id,def);}
 function toggleSignal(key,area){const l=S.signals[key]||(S.signals[key]=[]);const i=l.indexOf(area);i>=0?l.splice(i,1):l.push(area);changed();}
@@ -370,15 +393,21 @@ function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 function setStart(d){S.start=dOnly(d);changed();}
 function setTestInterval(n){S.testInterval=n;changed();}
 function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
 /* ── egzersiz düzenleme ── */
+function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(newD);
+  for(const d of n)if(!o.has(d))S.schedLog.push({e:id,d,op:'add',t:now});
+  for(const d of o)if(!n.has(d))S.schedLog.push({e:id,d,op:'remove',t:now});}
 function saveExercise(id,def){
+  const prevDays=id&&S.ex(id)?[...S.ex(id).days]:[];
+  let sid=id;
   if(id&&S.ex(id)&&S.ex(id).custom){const c=S.custom.find(x=>x.id===id);Object.assign(c,{name:def.name,pattern:def.pattern,unit:def.unit,days:def.days,rpe:def.rpe,impact:def.impact,halfRec:def.halfRec,step:def.step,muscles:def.muscles,systems:def.systems,targets:def.targets,note:def.note});}
   else if(id){S.overrides[id]=def;}
-  else{const nid='c_'+Date.now();S.custom.push(E(nid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note}));S.active.add(nid);}
+  else{sid='c_'+Date.now();S.custom.push(E(sid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note}));S.active.add(sid);}
+  logSched(sid,prevDays,def.days);
   S.reindex();changed();
 }
-function resetExercise(id){delete S.overrides[id];S.reindex();changed();}
+function resetExercise(id){delete S.overrides[id];S.schedLog=S.schedLog.filter(z=>z.e!==id);S.reindex();changed();}
 /* ── max / rekor ── */
 function addMax(id,v,t){S.maxes.push({e:id,v,t:t??Date.now()});changed();}
 function maxHistory(id){return S.maxes.filter(m=>m.e===id).sort((a,b)=>a.t-b.t);}
@@ -405,6 +434,29 @@ function gapScore(e,ml,sl){let g=0;for(const m in e.muscles){if(e.muscles[m]>=1)
   for(const s in e.systems){if(e.systems[s]>=1)g+=sl[s]<1?2:sl[s]<8?1:0;}return g;}
 function streak(){let d=dOnly(new Date());const days=new Set(S.logs.map(l=>dayKey(dt(l))));
   if(!days.has(dayKey(d)))d=new Date(d.getTime()-86400000);let n=0;while(days.has(dayKey(d))){n++;d=new Date(d.getTime()-86400000);}return n;}
+/* ── takvim / plan (tarihe duyarlı) ── */
+function scheduledAt(e,wd,X){
+  const evs=S.schedLog.filter(z=>z.e===e.id&&z.d===wd).sort((a,b)=>a.t-b.t);
+  if(!evs.length)return e.days.includes(wd);
+  const Xend=dOnly(X).getTime()+86400000-1;let last=null;
+  for(const z of evs){if(z.t<=Xend)last=z;else break;}
+  if(last)return last.op==='add';
+  return evs[0].op==='remove';
+}
+function phaseOf(X){if(dOnly(X)<S.start)return null;return (weekNo(X)-1)%4;}
+function plannedOn(X){if(dOnly(X)<S.start)return [];const wd=weekday(X);
+  return S.all().filter(e=>S.active.has(e.id)&&scheduledAt(e,wd,X)&&target(e,X)!==null);}
+function plannedSets(X){let s=0;for(const e of plannedOn(X)){const t=target(e,X);s+=t?t.sets:0;}return s;}
+function doneSetsOn(X){return S.logs.filter(l=>sameDay(dt(l),X)).length;}
+function doneMap(X){const m={};for(const l of S.logs)if(sameDay(dt(l),X))m[l.e]=(m[l.e]||0)+1;return m;}
+function schedChangesOn(X){return S.schedLog.filter(z=>sameDay(new Date(z.t),X));}
+function currentChain(){let d=dOnly(new Date()),n=0,first=true;
+  while(d>=S.start){const p=plannedSets(d),done=doneSetsOn(d);
+    if(p===0){}else if(done>0){n++;}else{if(!first)break;}
+    first=false;d=new Date(d.getTime()-86400000);}
+  return n;}
+function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1);}
+function addMonths(d,k){return new Date(d.getFullYear(),d.getMonth()+k,1);}
 
 /* ══════════════ HTML PARÇALARI ══════════════ */
 function tag(text,color,icon){return `<span class="tag" style="color:${color};background:color-mix(in srgb,${color} 15%,transparent)">${icon?`<span class="em">${icon}</span>`:''}${esc(text)}</span>`;}
@@ -482,12 +534,123 @@ function renderBalance(){
   return h;
 }
 
-/* ══════════════ İLERLEME ══════════════ */
+/* ══════════════ ÖZET (Panel / Takvim / Egzersiz) ══════════════ */
+let progMode=0,panelMonth=null,calMonth=null;
 function renderProgress(){
+  let h=`<div style="height:8px"></div><div class="seg">
+    <button class="${progMode===0?'on':''}" data-act="progmode" data-v="0">📊 Panel</button>
+    <button class="${progMode===1?'on':''}" data-act="progmode" data-v="1">📆 Takvim</button>
+    <button class="${progMode===2?'on':''}" data-act="progmode" data-v="2">📈 Egzersiz</button></div><div style="height:8px"></div>`;
+  h+=progMode===0?renderPanel():progMode===1?renderCalendar():renderExProgress();
+  return h;
+}
+function monthAgg(y,mo){
+  const logs=S.logs.filter(l=>{const d=dt(l);return d.getFullYear()===y&&d.getMonth()===mo;});
+  const days=new Set(logs.map(l=>dayKey(dt(l))));
+  const ex=new Set(logs.map(l=>l.e));
+  const reps=logs.reduce((a,l)=>a+(l.v||0),0);
+  const avgRpe=logs.length?logs.reduce((a,l)=>a+l.r,0)/logs.length:0;
+  const ml={};for(const m of M_ORDER)ml[m]=0;const sl={};for(const s of S_ORDER)sl[s]=0;
+  for(const l of logs){const e=S.ex(l.e);if(!e)continue;for(const m in e.muscles)ml[m]+=e.muscles[m];for(const s in e.systems)sl[s]+=e.systems[s];}
+  // uyum: gün gün planlanan vs yapılan (bugüne kadar)
+  const today=dOnly(new Date());let plan=0,done=0;
+  const dim=new Date(y,mo+1,0).getDate();
+  for(let dn=1;dn<=dim;dn++){const dd=new Date(y,mo,dn);if(dd>today)break;const p=plannedSets(dd);plan+=p;done+=Math.min(p,doneSetsOn(dd));}
+  return {logs,daysTrained:days.size,sets:logs.length,ex:ex.size,reps,avgRpe,ml,sl,plan,done};
+}
+function renderPanel(){
+  if(!panelMonth)panelMonth=monthStart(new Date());
+  const y=panelMonth.getFullYear(),mo=panelMonth.getMonth();
+  const A=monthAgg(y,mo),prev=addMonths(panelMonth,-1),P=monthAgg(prev.getFullYear(),prev.getMonth());
+  const adh=A.plan?Math.round(A.done*100/A.plan):0,padh=P.plan?Math.round(P.done*100/P.plan):0;
+  const sysCov=S_ORDER.filter(s=>A.sl[s]>0).length,musCov=M_ORDER.filter(m=>A.ml[m]>0).length;
+  const delta=(a,b,suf='')=>{if(b===0&&a===0)return '';const d=a-b;const c=d>=0?'var(--green)':'var(--red)';return ` <span style="color:${c};font-size:11px">${d>=0?'▲':'▼'}${fmt(Math.abs(d))}${suf}</span>`;}
+  let h=`<div class="card tight"><div style="display:flex;align-items:center">
+     <button class="iconbtn" data-act="panelprev">‹</button>
+     <div style="flex:1;text-align:center;font-weight:600">${kMonths[mo]} ${y}</div>
+     <button class="iconbtn" data-act="panelnext">›</button></div></div>`;
+  h+=sec('Nicelik','Bu ay ne kadar çalıştın');
+  h+=`<div class="stats">${statTile('Antrenman günü',A.daysTrained)}${statTile('Toplam set',A.sets)}${statTile('Farklı egzersiz',A.ex)}</div>`;
+  h+=`<div class="stats" style="margin-top:8px">${statTile('Toplam tekrar/sn',fmt(A.reps))}${statTile('Seri (gün)',currentChain())}${statTile('Uyum',adh+'%')}</div>`;
+  h+=sec('Nitelik','Nasıl geçti');
+  h+=`<div class="card tight">
+    <div class="mrow"><div style="flex:1">Plana uyum</div><div style="font-weight:600">${adh}%${delta(adh,padh,'%')}</div></div>
+    <div class="mrow"><div style="flex:1">Ortalama RPE (efor)</div><div style="font-weight:600">${A.avgRpe?A.avgRpe.toFixed(1):'—'}${A.avgRpe&&P.avgRpe?delta(+A.avgRpe.toFixed(1),+P.avgRpe.toFixed(1)):''}</div></div>
+    <div class="mrow"><div style="flex:1">Sistem kapsamı</div><div style="font-weight:600">${sysCov}/8</div></div>
+    <div class="mrow"><div style="flex:1">Kas grubu kapsamı</div><div style="font-weight:600">${musCov}/14</div></div>
+    <div class="mrow" style="border:none"><div style="flex:1">Önceki aya göre set</div><div style="font-weight:600">${A.sets}${delta(A.sets,P.sets)}</div></div></div>`;
+  h+=sec('Sistem uyaranı','Bu ay her sisteme kaç ağırlıklı set geldi');
+  const maxS=Math.max(1,...Object.values(A.sl));
+  for(const s of S_ORDER){h+=`<div class="mrow"><div class="ml" style="width:120px">${SINFO[s].icon} ${esc(SINFO[s].label)}</div><div style="flex:1">${barHtml(A.sl[s]/maxS,{color:SINFO[s].color,cls:'md',bg:'var(--surfhi)'})}</div><div class="mv">${fmt(A.sl[s])}</div></div>`;}
+  h+=sec('Kalıp dengesi','Bu ay set sayısı');
+  const pm=k=>{let n=0;for(const l of A.logs){const e=S.ex(l.e);if(e&&e.pattern.includes(k))n++;}return n;};
+  for(const p of [['İtme','itme','Çekme','çekme'],['Diz baskın','Diz baskın','Kalça baskın','Kalça baskın']]){
+    const a=pm(p[1]),b=pm(p[3]);const low=a>0&&b<a*0.5?p[2]:(b>0&&a<b*0.5?p[0]:null);
+    h+=noteBox(`${p[0]} ${a} · ${p[2]} ${b}${low?'  →  '+low+' geride':''}`,{color:low?'var(--orange)':'var(--green)',icon:low?'⚖️':'✓'});}
+  if(A.sets===0)h+=noteBox('Bu ay henüz kayıt yok.',{icon:'📭'});
+  return h;
+}
+function renderCalendar(){
+  if(!calMonth)calMonth=monthStart(new Date());
+  const y=calMonth.getFullYear(),mo=calMonth.getMonth();
+  const first=new Date(y,mo,1),lead=weekday(first)-1,dim=new Date(y,mo+1,0).getDate(),today=new Date();
+  let mplan=0,mdone=0;for(let dn=1;dn<=dim;dn++){const dd=new Date(y,mo,dn);if(dd>dOnly(today))break;const p=plannedSets(dd);mplan+=p;mdone+=Math.min(p,doneSetsOn(dd));}
+  const adh=mplan?Math.round(mdone*100/mplan):0;
+  let h=`<div class="card tight"><div style="display:flex;align-items:center">
+     <button class="iconbtn" data-act="calprev">‹</button>
+     <div style="flex:1;text-align:center;font-weight:600">${kMonths[mo]} ${y}</div>
+     <button class="iconbtn" data-act="calnext">›</button></div></div>`;
+  h+=`<div class="stats"><div class="stat"><div class="l">Zincir</div><div class="v">${currentChain()} <span style="font-size:13px">🔥</span></div></div>${statTile('Ay uyumu',adh+'%')}${statTile('Bu ay gün',new Set(S.logs.filter(l=>{const d=dt(l);return d.getFullYear()===y&&d.getMonth()===mo;}).map(l=>dayKey(dt(l)))).size)}</div>`;
+  h+=`<div style="height:10px"></div><div class="cal">`+['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(w=>`<div class="wh">${w}</div>`).join('');
+  for(let i=0;i<lead;i++)h+=`<div class="cell empty"></div>`;
+  for(let dn=1;dn<=dim;dn++){
+    const date=new Date(y,mo,dn),pre=dOnly(date)<S.start,ph=phaseOf(date);
+    const planned=plannedSets(date),done=doneSetsOn(date),isToday=sameDay(date,today);
+    const ch=schedChangesOn(date),hasAdd=ch.some(c=>c.op==='add'),hasRem=ch.some(c=>c.op==='remove');
+    const fresh=ch.some(c=>daysSince(c.t)<=3);
+    const bg=ph!==null?`background:color-mix(in srgb,${PHASE[ph].c} 16%,transparent);box-shadow:inset 3px 0 0 ${PHASE[ph].c};`:'';
+    const fill=planned>0?Math.min(1,done/planned):(done>0?1:0);
+    h+=`<div class="cell${pre?' pre':''}${isToday?' today':''}" style="${bg}" data-act="dayopen" data-date="${dayKey(date)}">
+      <div class="dn">${dn}</div>
+      ${(planned>0||done>0)?`<div class="frac">${done}/${planned}</div>`:''}
+      ${planned>0&&done>=planned?'<div class="chk">✓</div>':''}
+      ${(planned>0||done>0)?`<div class="dot"><i style="width:${fill*100}%"></i></div>`:''}
+      ${hasAdd?`<span class="mk add${fresh?' fresh':''}"></span>`:''}
+      ${hasRem?`<span class="mk rem${fresh?' fresh':''}"></span>`:''}</div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="card tight" style="margin-top:12px"><div class="subhdr" style="padding-top:0">Renkler ve işaretler</div>
+    <div class="lgd">${PHASE.map(p=>`<span><span class="sw" style="background:color-mix(in srgb,${p.c} 55%,transparent)"></span>${p.t}</span>`).join('')}</div>
+    <div class="lgd" style="margin-top:8px"><span><span class="d" style="background:var(--green)"></span>egzersiz eklendi</span><span><span class="d" style="background:var(--red)"></span>çıkarıldı</span><span>✓ tamamlandı · yeşil çubuk yapılan/planlanan</span></div></div>`;
+  return h;
+}
+function openDay(key){
+  const date=new Date(key+'T12:00:00'),ph=phaseOf(date),wd=weekday(date);
+  const planned=plannedOn(date),dmap=doneMap(date),ch=schedChangesOn(date);
+  const doneExtra=Object.keys(dmap).filter(id=>!planned.some(e=>e.id===id));
+  const dayLogs=S.logs.filter(l=>sameDay(dt(l),date));
+  const avg=dayLogs.length?(dayLogs.reduce((a,l)=>a+l.r,0)/dayLogs.length).toFixed(1):null;
+  let rows='';
+  for(const e of planned){const t=target(e,date),got=dmap[e.id]||0,ok=got>=t.sets;
+    rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
+  for(const id of doneExtra){const e=S.ex(id);if(!e)continue;rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${dmap[id]} set · plan dışı</span></div><div style="color:var(--primary)">＋</div></div>`;}
+  let chTxt='';
+  const adds=ch.filter(c=>c.op==='add'),rems=ch.filter(c=>c.op==='remove');
+  const nm=id=>S.ex(id)?S.ex(id).name:'—';
+  if(adds.length)chTxt+=noteBox('Bu gün programa eklendi: '+[...new Set(adds.map(c=>nm(c.e)))].join(', '),{color:'var(--green)',icon:'＋'});
+  if(rems.length)chTxt+=noteBox('Bu gün programdan çıkarıldı: '+[...new Set(rems.map(c=>nm(c.e)))].join(', '),{color:'var(--red)',icon:'－'});
+  openSheet(`<div class="dsheet"><div style="display:flex;align-items:center;gap:8px">
+     <div class="title-lg" style="flex:1">${date.getDate()} ${kMonths[date.getMonth()]}, ${kDayNames[wd-1]}</div>
+     ${ph!==null?`<span class="dpill" style="background:color-mix(in srgb,${PHASE[ph].c} 20%,transparent);color:${PHASE[ph].c}">${PHASE[ph].t}</span>`:'<span class="dpill" style="background:var(--surfhi);color:var(--onvar)">program öncesi</span>'}</div>
+     <div class="muted small" style="margin-top:4px">${esc(kSessions[wd])}${avg?' · ort. RPE '+avg:''}</div>
+     <div style="height:10px"></div>${chTxt}
+     ${rows||'<div class="muted small">Bu gün için planlı egzersiz yok.</div>'}</div>`);
+}
+function renderExProgress(){
   const today=dOnly(new Date());
   const ws=new Date(today.getTime()-(weekday(today)-1)*86400000);
   const weekSets=S.logs.filter(l=>dOnly(dt(l))>=ws).length;
-  let h=`<div style="height:8px"></div><div class="stats">${statTile('Program haftası',weekNo(today))}${statTile('Bu hafta set',weekSets)}${statTile('Seri (gün)',streak())}</div>`;
+  let h=`<div class="stats">${statTile('Program haftası',weekNo(today))}${statTile('Bu hafta set',weekSets)}${statTile('Seri (gün)',streak())}</div>`;
   h+=sec('Vücut ölçümleri','Kilo, bel çevresi ve nabzı buradan takip et. Egzersiz maksimumları için Rekor sekmesi.');
   h+=metricsCard();
   h+=sec('Egzersiz ilerlemesi','Son 4 hafta set sayısı ve son 7 gün uyumu');
@@ -683,8 +846,8 @@ function libBrowse(){
 }
 
 /* ══════════════ RENDER + NAV ══════════════ */
-const TABS=['Bugün','Denge','İlerleme','Rekor','Program'];
-const NAVIC=['📅','🎯','📈','🏅','🗓️'];
+const TABS=['Bugün','Denge','Özet','Rekor','Program'];
+const NAVIC=['📅','🎯','📊','🏅','🗓️'];
 const PAGES=[renderToday,renderBalance,renderProgress,renderMax,renderLibrary];
 let tab=0;
 function render(){
@@ -979,6 +1142,12 @@ document.body.addEventListener('click',ev=>{
     case 'addset':{const e=S.ex(id),t=target(e,dOnly(new Date()));addLog(id,t.v,e.rpe);showToast(`${e.name}: ${fmt(t.v)} ${e.unit} kaydedildi`,()=>undoLast(id));break;}
     case 'log':openLog(S.ex(id),target(S.ex(id),dOnly(new Date())).v);break;
     case 'metric':openMetric();break;
+    case 'progmode':progMode=+el.dataset.v;render();break;
+    case 'panelprev':panelMonth=addMonths(panelMonth||monthStart(new Date()),-1);render();break;
+    case 'panelnext':panelMonth=addMonths(panelMonth||monthStart(new Date()),1);render();break;
+    case 'calprev':calMonth=addMonths(calMonth||monthStart(new Date()),-1);render();break;
+    case 'calnext':calMonth=addMonths(calMonth||monthStart(new Date()),1);render();break;
+    case 'dayopen':openDay(el.dataset.date);break;
     case 'addmax':openMax(null);break;
     case 'retest':openMax(id);break;
     case 'interval':openInterval();break;
