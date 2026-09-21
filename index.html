@@ -153,6 +153,23 @@ details.ex .body{padding:0 16px 14px}
 <div id="toast"></div>
 <script>
 "use strict";
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  FIREBASE — TEK ORTAK PROJE (buraya kendi config'ini yapıştır)  ║
+   ║  Firebase Console → Proje Ayarları → Web uygulaması → SDK       ║
+   ║  Doldurunca siteye giren herkes yalnızca e-posta ile giriş/kayıt║
+   ║  yapar; config sormaz. Boş bırakırsan uygulama "kendi config'ini║
+   ║  yapıştır" akışına düşer (hiçbir şey kırılmaz).                 ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+const EMBEDDED_FB_CONFIG={
+   piKey: "AIzaSyB-icA97c2D5g3yW9o_4UXlxHA6icTAl-Q",
+  authDomain: "fitnas-8c3e7.firebaseapp.com",
+  projectId: "fitnas-8c3e7",
+  storageBucket: "fitnas-8c3e7.firebasestorage.app",
+  messagingSenderId: "227803385072",
+  appId: "1:227803385072:web:6712105cb3c202f45a8635",
+  measurementId: "G-V1KEWH5YL2"
+};
+const HAS_EMBEDDED=!!(EMBEDDED_FB_CONFIG&&EMBEDDED_FB_CONFIG.apiKey&&EMBEDDED_FB_CONFIG.projectId);
 /* ══════════════ SABİTLER ══════════════ */
 const M_ORDER=['gogus','omuz','triseps','lat','ustSirt','biseps','onkol','kuadriseps','hamstring','gluteus','baldir','core','coreRot','kalcaYan'];
 const S_ORDER=['sinir','kas','tendon','kemik','mobilite','reaktif','aerobik','anaerobik'];
@@ -252,7 +269,7 @@ function status(v){const c=S.cfg;return v<c.openBelow?{t:'Açıkta',c:'var(--red
 const KEY='antrenman_takip_v2';
 const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, schedLog:[], cfg:mergeCfg(), _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], cfg:mergeCfg(), baseBlock:[], _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
@@ -306,7 +323,9 @@ function changed(){save();render();}
 /* ══════════════ BULUT SENKRON (Firebase) ══════════════ */
 const CFGKEY='fb_config';
 const Cloud={cfg:null,app:null,auth:null,db:null,user:null,unsub:null,applying:false,status:'off',err:'',pushT:null,lastSync:0};
-function cloudGetCfg(){if(Cloud.cfg)return Cloud.cfg;try{const s=localStorage.getItem(CFGKEY);if(s)Cloud.cfg=JSON.parse(s);}catch(e){}return Cloud.cfg;}
+function cloudByo(){try{const s=localStorage.getItem(CFGKEY);if(s)return JSON.parse(s);}catch(e){}return null;}
+function cloudGetCfg(){const byo=cloudByo();if(byo)return byo;if(HAS_EMBEDDED)return EMBEDDED_FB_CONFIG;return null;}
+function cloudUsingEmbedded(){return HAS_EMBEDDED&&!cloudByo();}
 function cloudLibReady(){return typeof window!=='undefined'&&window.firebase&&firebase.auth&&firebase.firestore;}
 function parseCfg(txt){let s=(txt||'').trim();const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a>=0&&b>a)s=s.slice(a,b+1);
   try{return JSON.parse(s);}catch(e){}try{return Function('return ('+s+')')();}catch(e){}return null;}
@@ -351,8 +370,8 @@ function cloudPush(immediate){
 }
 function cloudConfigure(txt){const cfg=parseCfg(txt);
   if(!cfg||!cfg.apiKey||!cfg.projectId){Cloud.err='Config okunamadı. apiKey ve projectId içeren nesneyi yapıştır.';return false;}
-  Cloud.cfg=cfg;try{localStorage.setItem(CFGKEY,JSON.stringify(cfg));}catch(e){}
-  Cloud.app=null;Cloud.err='';cloudInit();return true;}
+  try{localStorage.setItem(CFGKEY,JSON.stringify(cfg));}catch(e){}
+  location.reload();return true;}
 function cloudForget(){try{localStorage.removeItem(CFGKEY);}catch(e){}location.reload();}
 function cloudAuth(mode,email,pw,cb){
   if(!Cloud.auth){cb('Önce Firebase bağlanmalı');return;}
@@ -1152,41 +1171,54 @@ function cloudStatusText(){
     default:return 'Kapalı';
   }
 }
+function cloudCfgFooter(){
+  if(cloudUsingEmbedded())return `<div style="text-align:center;margin-top:14px"><button class="text" id="cadv" style="color:var(--onvar)">Gelişmiş: kendi Firebase projeni kullan</button></div>
+    <div id="cadvbox" style="display:none;margin-top:8px">
+      <label class="fld">Kendi Firebase config'in (bu cihazda geçerli olur)</label>
+      <textarea id="ccfg" style="min-height:110px" placeholder='{ "apiKey": "...", "projectId": "..." }'></textarea>
+      <div class="errmsg" id="cerr2" style="display:none"></div>
+      <button class="fill block" id="csave" style="margin-top:8px">Bu projeyi kullan</button></div>`;
+  if(cloudByo())return `<div style="text-align:center;margin-top:14px"><button class="text" id="cforget" style="color:var(--red)">${HAS_EMBEDDED?'Ortak projeye dön':'Firebase bağlantısını bu cihazdan kaldır'}</button></div>`;
+  return '';
+}
 function openCloud(){
   _cloudOpen=true;
   const lib=cloudLibReady(),cfg=cloudGetCfg();
   let body='';
   if(!lib){
     body=noteBox('Firebase kütüphanesi bu ortamda yüklenemedi. Bu, claude.ai önizlemesinde ve çevrimdışıyken beklenen bir durum. Dosyayı GitHub Pages\'e yükleyip oradan açtığında bulut senkronu çalışır.',{color:'var(--orange)',icon:'⚠️'});
-    if(cfg)body+=`<div style="text-align:center;margin-top:8px"><button class="text" id="cforget" style="color:var(--red)">Firebase bağlantısını kaldır</button></div>`;
+    if(cloudByo())body+=`<div style="text-align:center;margin-top:8px"><button class="text" id="cforget" style="color:var(--red)">${HAS_EMBEDDED?'Ortak projeye dön':'Firebase bağlantısını kaldır'}</button></div>`;
   } else if(!cfg){
-    body=noteBox('Kendi ücretsiz Firebase projenin config bilgisini yapıştır. Bu bilgi gizli değildir; güvenlik Firestore kuralları ve girişinle sağlanır. Kurulum adımları için sohbetteki yönergeye bak.',{icon:'☁️'})
+    body=noteBox('Bulut senkronu için bir Firebase projesi gerekli. Kendi ücretsiz projenin config bilgisini yapıştır (bu bilgi gizli değildir; güvenlik Firestore kuralları ve girişinle sağlanır).',{icon:'☁️'})
       +`<label class="fld">Firebase config (konsoldan kopyaladığın nesne)</label>
         <textarea id="ccfg" style="min-height:120px" placeholder='{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "...",\n  "appId": "..."\n}'></textarea>
         <div class="errmsg" id="cerr" style="display:${Cloud.err?'block':'none'}">${esc(Cloud.err)}</div>
         <div style="height:10px"></div><button class="fill block" id="csave">Firebase\'i bağla</button>`;
   } else if(!Cloud.user){
-    body=noteBox('Cihazlar arası senkron için e-posta + şifreyle giriş yap. İlk kez kullanıyorsan önce "Kayıt ol".',{icon:'🔐'})
+    body=noteBox('Cihazlar arası senkron için e-posta ve şifreyle giriş yap. İlk kez kullanıyorsan önce “Kayıt ol”. Verilerin yalnızca sana özel; kimse başkasının verisini göremez.',{icon:'🔐'})
       +`<label class="fld">E-posta</label><input type="text" id="cem" inputmode="email" autocomplete="username">
         <div style="height:10px"></div><label class="fld">Şifre (en az 6 karakter)</label><input type="text" id="cpw" autocomplete="current-password" style="-webkit-text-security:disc">
         <div class="errmsg" id="cerr" style="display:${Cloud.err?'block':'none'}">${esc(Cloud.err)}</div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="out" id="cin" style="flex:1">Giriş yap</button><button class="fill" id="cup" style="flex:1">Kayıt ol</button></div>
-        <div style="text-align:center;margin-top:10px"><button class="text" id="cforget" style="color:var(--red)">Firebase bağlantısını kaldır</button></div>`;
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="out" id="cin" style="flex:1">Giriş yap</button><button class="fill" id="cup" style="flex:1">Kayıt ol</button></div>`
+      +cloudCfgFooter();
   } else {
     const ok=Cloud.status==='synced';
     body=`<div class="card tight" style="margin:0 0 10px"><div style="display:flex;align-items:center;gap:12px">
         <div style="font-size:24px">${ok?'✅':'🔄'}</div><div style="flex:1">
         <div style="font-weight:600">${ok?'Senkron açık':'Bağlanıyor…'}</div>
         <div class="muted small">${esc(Cloud.user.email)}${Cloud.lastSync?' · son eşitleme '+dm(new Date(Cloud.lastSync))+' '+pad(new Date(Cloud.lastSync).getHours())+':'+pad(new Date(Cloud.lastSync).getMinutes()):''}</div></div></div></div>`
-      +noteBox('Bu cihazdaki her değişiklik otomatik olarak buluta yazılır; aynı hesapla girdiğin diğer cihazlar anında güncellenir. Çakışmada en son kaydeden kazanır.',{color:'var(--green)',icon:'ℹ️'})
+      +noteBox('Bu cihazdaki her değişiklik otomatik buluta yazılır; aynı hesapla girdiğin diğer cihazlar anında güncellenir. Çakışmada en son kaydeden kazanır.',{color:'var(--green)',icon:'ℹ️'})
       +(Cloud.err?`<div class="errmsg">${esc(Cloud.err)}</div>`:'')
-      +`<div style="display:flex;gap:8px;margin-top:6px"><button class="out" id="cout" style="flex:1">Çıkış yap</button><button class="text" id="cforget" style="color:var(--red)">Bağlantıyı kaldır</button></div>`;
+      +`<div style="margin-top:6px"><button class="out block" id="cout">Çıkış yap</button></div>`
+      +cloudCfgFooter();
   }
   openSheet(`<div class="title-lg">☁️ Bulut senkron</div><div style="height:12px"></div>${body}`);
   const q=s=>overlay.querySelector(s);
   const showErr=()=>{const e=q('#cerr');if(e){e.textContent=Cloud.err;e.style.display=Cloud.err?'block':'none';}};
-  if(q('#csave'))q('#csave').onclick=()=>{Cloud.err='';if(cloudConfigure(q('#ccfg').value))openCloud();else showErr();};
-  if(q('#cforget'))q('#cforget').onclick=()=>{if(confirm('Firebase bağlantısı bu cihazdan kaldırılsın mı? Yerel verilerin silinmez.'))cloudForget();};
+  const saveCfg=()=>{Cloud.err='';const box=q('#ccfg');if(cloudConfigure(box?box.value:'')){openCloud();}else{const e2=q('#cerr2')||q('#cerr');if(e2){e2.textContent=Cloud.err;e2.style.display='block';}}};
+  if(q('#cadv'))q('#cadv').onclick=()=>{const b=q('#cadvbox');if(b)b.style.display=b.style.display==='none'?'block':'none';};
+  if(q('#csave'))q('#csave').onclick=saveCfg;
+  if(q('#cforget'))q('#cforget').onclick=()=>{if(confirm(HAS_EMBEDDED?'Bu cihazda ortak projeye dönülsün mü? Yerel verilerin silinmez.':'Firebase bağlantısı bu cihazdan kaldırılsın mı? Yerel verilerin silinmez.'))cloudForget();};
   if(q('#cin'))q('#cin').onclick=()=>{Cloud.err='';cloudAuth('in',q('#cem').value.trim(),q('#cpw').value,e=>{if(e){Cloud.err=e;showErr();}else openCloud();});};
   if(q('#cup'))q('#cup').onclick=()=>{Cloud.err='';cloudAuth('up',q('#cem').value.trim(),q('#cpw').value,e=>{if(e){Cloud.err=e;showErr();}else openCloud();});};
   if(q('#cout'))q('#cout').onclick=()=>{cloudSignOut();Cloud.err='';openCloud();};
