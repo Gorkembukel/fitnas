@@ -1,5 +1,6 @@
 
 
+
   <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -506,8 +507,8 @@ function oneoffTarget(e,day){return target(e,day)||{sets:(e.targets[0]?e.targets
 /* ── gün içine yayma (spread) ── */
 function spreadPlan(today){
   const rem=[];
-  for(const e of todayList(today)){const t=target(e,today);rem.push({e,total:t.sets,left:t.sets,v:t.v,extra:false});}
-  for(const e of oneoffsOn(dayKey(today))){if(todayList(today).some(x=>x.id===e.id))continue;const t=oneoffTarget(e,today);rem.push({e,total:t.sets,left:t.sets,v:t.v,extra:true});}
+  for(const e of todayList(today)){const t=target(e,today);const left=t.sets-countOn(e.id,today);if(left>0)rem.push({e,total:t.sets,left,v:t.v,extra:false});}
+  for(const e of oneoffsOn(dayKey(today))){if(todayList(today).some(x=>x.id===e.id))continue;const t=oneoffTarget(e,today);const left=t.sets-countOn(e.id,today);if(left>0)rem.push({e,total:t.sets,left,v:t.v,extra:true});}
   const seq=[],recM={},recS={};let idx=0;const total=rem.reduce((a,r)=>a+r.left,0);
   while(seq.length<total){
     let best=null,bs=-1e9;
@@ -524,7 +525,7 @@ function spreadPlan(today){
     idx++;}
   return seq;
 }
-function spreadTime(i,n){const startH=8,endH=22;const h=n<=1?13:startH+i*(endH-startH)/(n-1);const hh=Math.floor(h),mm=Math.round((h-hh)*60);return pad(hh)+':'+pad(Math.min(59,mm));}
+function spreadTime(i,n,startH,endH){const h=n<=1?startH:startH+i*(endH-startH)/(n-1);let hh=Math.floor(h),mm=Math.round((h-hh)*60);if(mm>=60){hh++;mm-=60;}return pad(Math.min(23,hh))+':'+pad(mm);}
 function currentChain(){let d=dOnly(new Date()),n=0,first=true;
   while(d>=S.start){const p=plannedSets(d),done=doneSetsOn(d);
     if(p===0){}else if(done>0){n++;}else{if(!first)break;}
@@ -567,16 +568,19 @@ function renderToday(){
   return h;
 }
 function spreadView(today){
-  const seq=spreadPlan(today),n=seq.length,dcount={};
-  let h=noteBox('Setler; aynı kas/sistemi arka arkaya yormamak ve RPE\'ye göre yüksek eforlulara daha çok ara bırakmak üzere gün içine dağıtıldı. Saatler öneridir; bir satıra dokununca o egzersizden bir set işaretlenir.',{icon:'🕐'});
+  const seq=spreadPlan(today),n=seq.length;
+  if(!n)return noteBox('Bugün için kalan set yok — hepsi tamamlandı. 🎉',{color:'var(--green)',icon:'✓'});
+  const now=new Date();let startH=now.getHours()+now.getMinutes()/60;if(startH>23.5)startH=23.5;
+  let endH=Math.max(startH+0.5,22);if(endH>23.9)endH=23.9;
+  let h=noteBox('Kalan setler, şu andan itibaren gün içine dağıtıldı. Aynı kas/sistem arka arkaya gelmez; RPE yükseldikçe daha çok ara bırakılır. Tamamladığın setler listeden düşer, kalan yeniden yayılır. Saatler öneridir.',{icon:'🕐'});
   h+=`<div class="card tight"><div class="tl">`;
-  for(let i=0;i<n;i++){const it=seq[i],e=it.e;const c=(dcount[e.id]||0);const isDone=c<countOn(e.id,today);dcount[e.id]=c+1;
-    h+=`<div class="tlrow ${isDone?'done':''}" data-act="addset" data-id="${e.id}">
-      <div class="t">${spreadTime(i,n)}</div>
+  for(let i=0;i<n;i++){const it=seq[i],e=it.e;
+    h+=`<div class="tlrow" data-act="addset" data-id="${e.id}">
+      <div class="t">${spreadTime(i,n,startH,endH)}</div>
       <div class="b"><div style="font-weight:600;font-size:14px">${esc(e.name)}${it.extra?' <span class="badge">ekstra</span>':''}</div>
         <div class="muted tiny">set ${it.setNo}/${it.total} · ${fmt(it.v)} ${esc(e.unit)} · RPE ${e.rpe}</div>
         <div class="tags" style="margin-top:4px">${exTags(e)}</div></div>
-      <div class="k">${isDone?'✓':'○'}</div></div>`;}
+      <div class="k">○</div></div>`;}
   h+=`</div></div>`;
   return h;
 }
