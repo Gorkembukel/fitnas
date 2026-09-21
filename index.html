@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+
+
+  <!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -134,6 +136,15 @@ details.ex .body{padding:0 16px 14px}
 .mk{position:absolute;top:3px;width:7px;height:7px;border-radius:50%}
 .mk.add{right:3px;background:var(--green);color:var(--green)}
 .mk.rem{left:3px;background:var(--red);color:var(--red)}
+.mk.extra{top:3px;left:50%;margin-left:-3.5px;background:#8e6cf0;color:#8e6cf0}
+.tl{}
+.tlrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--divider);cursor:pointer}
+.tlrow:last-child{border-bottom:none}
+.tlrow .t{width:44px;flex:none;font-size:12px;color:var(--onvar);font-variant-numeric:tabular-nums;padding-top:1px}
+.tlrow .b{flex:1;min-width:0}
+.tlrow .k{width:26px;flex:none;text-align:right;font-size:16px;color:var(--onvar)}
+.tlrow.done{opacity:.55}
+.tlrow.done .k{color:var(--green)}
 .mk.fresh{animation:pmk 1.5s infinite}
 @keyframes pmk{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .lgd{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--onvar);align-items:center}
@@ -161,7 +172,7 @@ details.ex .body{padding:0 16px 14px}
    ║  yapıştır" akışına düşer (hiçbir şey kırılmaz).                 ║
    ╚══════════════════════════════════════════════════════════════╝ */
 const EMBEDDED_FB_CONFIG={
-   piKey: "AIzaSyB-icA97c2D5g3yW9o_4UXlxHA6icTAl-Q",
+  piKey: "AIzaSyB-icA97c2D5g3yW9o_4UXlxHA6icTAl-Q",
   authDomain: "fitnas-8c3e7.firebaseapp.com",
   projectId: "fitnas-8c3e7",
   storageBucket: "fitnas-8c3e7.firebasestorage.app",
@@ -269,7 +280,7 @@ function status(v){const c=S.cfg;return v<c.openBelow?{t:'Açıkta',c:'var(--red
 const KEY='antrenman_takip_v2';
 const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, schedLog:[], cfg:mergeCfg(), baseBlock:[], _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], oneoff:[], cfg:mergeCfg(), _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
@@ -287,7 +298,7 @@ function customToJ(e){return {id:e.id,def:defOf(e)};}
 function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
   muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note});}
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
-  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,cfg:S.cfg,custom:S.custom.map(customToJ),
+  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,cfg:S.cfg,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
 function applyState(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
@@ -296,7 +307,7 @@ function applyState(d){
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.cfg=mergeCfg(d.cfg);
+  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.oneoff=d.oneoff||[];S.cfg=mergeCfg(d.cfg);
   S._updatedAt=d.updatedAt||Date.now();
 }
 function load(){
@@ -310,7 +321,7 @@ function load(){
 function migrateV1(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.cfg=mergeCfg();
+  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.cfg=mergeCfg();
   S.custom=(d.custom||[]).map(j=>{const muscles={},systems={};for(const n of (j.m||[]))muscles[n]=1;for(const n of (j.s||[]))systems[n]=1;
     const t={sets:j.sets,v:j.v};return E(j.id,j.name,{pattern:j.pattern||'Özel',unit:j.unit,grp:'Özel',custom:true,muscles,systems,days:j.days,targets:[t,{...t},{...t},{...t}],rpe:j.rpe});});
   S.reindex();
@@ -427,7 +438,7 @@ function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 function setStart(d){S.start=dOnly(d);changed();}
 function setTestInterval(n){S.testInterval=n;changed();}
 function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
 function resetCfg(){S.cfg=mergeCfg();changed();}
 /* ── egzersiz düzenleme ── */
 function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(newD);
@@ -486,6 +497,34 @@ function plannedSets(X){let s=0;for(const e of plannedOn(X)){const t=target(e,X)
 function doneSetsOn(X){return S.logs.filter(l=>sameDay(dt(l),X)).length;}
 function doneMap(X){const m={};for(const l of S.logs)if(sameDay(dt(l),X))m[l.e]=(m[l.e]||0)+1;return m;}
 function schedChangesOn(X){return S.schedLog.filter(z=>sameDay(new Date(z.t),X));}
+/* ── bugüne özel (oneoff) ── */
+function oneoffIds(key){return S.oneoff.filter(o=>o.d===key).map(o=>o.e);}
+function oneoffsOn(key){return oneoffIds(key).map(id=>S.ex(id)).filter(Boolean);}
+function addOneoff(id,key){if(!S.oneoff.some(o=>o.e===id&&o.d===key))S.oneoff.push({e:id,d:key});changed();}
+function removeOneoff(id,key){S.oneoff=S.oneoff.filter(o=>!(o.e===id&&o.d===key));changed();}
+function oneoffTarget(e,day){return target(e,day)||{sets:(e.targets[0]?e.targets[0].sets:3),v:(e.targets[0]?e.targets[0].v:10)};}
+/* ── gün içine yayma (spread) ── */
+function spreadPlan(today){
+  const rem=[];
+  for(const e of todayList(today)){const t=target(e,today);rem.push({e,total:t.sets,left:t.sets,v:t.v,extra:false});}
+  for(const e of oneoffsOn(dayKey(today))){if(todayList(today).some(x=>x.id===e.id))continue;const t=oneoffTarget(e,today);rem.push({e,total:t.sets,left:t.sets,v:t.v,extra:true});}
+  const seq=[],recM={},recS={};let idx=0;const total=rem.reduce((a,r)=>a+r.left,0);
+  while(seq.length<total){
+    let best=null,bs=-1e9;
+    for(const r of rem){if(r.left<=0)continue;let s=r.left*0.6;
+      if(seq.length&&seq[seq.length-1].e.id===r.e.id)s-=100;
+      const cd=Math.max(2,Math.round(r.e.rpe/2));
+      for(const m in r.e.muscles)if(r.e.muscles[m]>=1&&recM[m]!=null){const g=idx-recM[m];if(g<cd)s-=(cd-g)*4;}
+      for(const sy in r.e.systems)if(r.e.systems[sy]>=1&&recS[sy]!=null){const g=idx-recS[sy];if(g<cd)s-=(cd-g)*4;}
+      if(s>bs){bs=s;best=r;}}
+    if(!best)break;best.left--;
+    seq.push({e:best.e,setNo:best.total-best.left,total:best.total,v:best.v,extra:best.extra});
+    for(const m in best.e.muscles)if(best.e.muscles[m]>=1)recM[m]=idx;
+    for(const sy in best.e.systems)if(best.e.systems[sy]>=1)recS[sy]=idx;
+    idx++;}
+  return seq;
+}
+function spreadTime(i,n){const startH=8,endH=22;const h=n<=1?13:startH+i*(endH-startH)/(n-1);const hh=Math.floor(h),mm=Math.round((h-hh)*60);return pad(hh)+':'+pad(Math.min(59,mm));}
 function currentChain(){let d=dOnly(new Date()),n=0,first=true;
   while(d>=S.start){const p=plannedSets(d),done=doneSetsOn(d);
     if(p===0){}else if(done>0){n++;}else{if(!first)break;}
@@ -503,19 +542,42 @@ function noteBox(t,{color,icon}={}){const c=color||'var(--primary)';return `<div
 function barHtml(val,{color,cls='',bg}={}){const pct=Math.max(0,Math.min(1,val))*100;return `<div class="bar ${cls}" ${bg?`style="background:${bg}"`:''}><i style="width:${pct}%${color?`;background:${color}`:''}"></i></div>`;}
 
 /* ══════════════ BUGÜN ══════════════ */
+let spreadOn=false;
 function renderToday(){
   const today=dOnly(new Date()),wk=weekNo(today),idx=(wk-1)%4,list=todayList(today);
+  const offs=oneoffsOn(dayKey(today)).filter(e=>!list.some(x=>x.id===e.id));
   let done=0,tot=0;for(const e of list){const t=target(e,today);tot+=t.sets;done+=Math.min(t.sets,countOn(e.id,today));}
+  for(const e of offs){const t=oneoffTarget(e,today);tot+=t.sets;done+=Math.min(t.sets,countOn(e.id,today));}
   let h=`<div class="card"><div class="title-lg">${esc(kDayNames[weekday(today)-1])}: ${esc(kSessions[weekday(today)])}</div>
     <div class="muted" style="margin-top:4px">Hafta ${wk} · ${idx===3?'deload haftası (yük %30-40 az)':'yükleme haftası '+(idx+1)+'/3'}</div>
     <div style="margin-top:14px">${barHtml(tot===0?0:done/tot)}</div>
     <div class="small" style="margin-top:6px">${done} / ${tot} set tamamlandı</div></div>`;
-  if(wk>=4)h+=noteBox('Blok 1 bitmek üzere. Sıradaki sekmesinde Blok 2 adaylarını ve kriterlerini kontrol et. Bir döngü bitince hedefler otomatik artar.',{icon:'🚩'});
+  if(wk>=4)h+=noteBox('Blok 1 bitmek üzere. Program → Öneriler sekmesinde Blok 2 adaylarını kontrol et. Bir döngü bitince hedefler otomatik artar.',{icon:'🚩'});
   h+=signalsCard(today);
-  if(list.length===0)h+=noteBox('Bugün için aktif egzersiz yok. Sıradaki sekmesinden program ekleyebilir veya egzersiz oluşturabilirsin.');
-  let lastGrp=null;for(const e of list){if(e.grp!==lastGrp){h+=sec(e.grp);lastGrp=e.grp;}h+=exTile(e,today);}
+  if(list.length||offs.length)h+=`<button class="out block" data-act="spread" style="margin-bottom:10px">${spreadOn?'✓ Güne yayılmış sıra açık — normal görünüme dön':'🕐 Güne yayılmış sırayı göster'}</button>`;
+  if(list.length===0&&offs.length===0)h+=noteBox('Bugün için aktif egzersiz yok. Program sekmesinden egzersiz ekleyebilir ya da aşağıdan bugüne özel bir hareket ekleyebilirsin.');
+  if(spreadOn&&(list.length||offs.length))h+=spreadView(today);
+  else{
+    let lastGrp=null;for(const e of list){if(e.grp!==lastGrp){h+=sec(e.grp);lastGrp=e.grp;}h+=exTile(e,today);}
+    if(offs.length){h+=sec('Ekstra (bugüne özel)','Sadece bugün için eklendi, programı değiştirmez');for(const e of offs)h+=exTile(e,today,{t:oneoffTarget(e,today),oneoff:true});}
+  }
+  h+=`<div style="text-align:center;margin-top:6px"><button class="text" data-act="addoneoff">＋ Bugüne özel egzersiz ekle</button></div>`;
   const hasToday=S.logs.some(l=>sameDay(dt(l),today))||(S.signals[dayKey(today)]||[]).length>0;
-  if(hasToday)h+=`<div style="text-align:center;margin-top:12px"><button class="text" data-act="resettoday" style="color:var(--red)">↺ Bugünü sıfırla</button></div>`;
+  if(hasToday)h+=`<div style="text-align:center;margin-top:6px"><button class="text" data-act="resettoday" style="color:var(--red)">↺ Bugünü sıfırla</button></div>`;
+  return h;
+}
+function spreadView(today){
+  const seq=spreadPlan(today),n=seq.length,dcount={};
+  let h=noteBox('Setler; aynı kas/sistemi arka arkaya yormamak ve RPE\'ye göre yüksek eforlulara daha çok ara bırakmak üzere gün içine dağıtıldı. Saatler öneridir; bir satıra dokununca o egzersizden bir set işaretlenir.',{icon:'🕐'});
+  h+=`<div class="card tight"><div class="tl">`;
+  for(let i=0;i<n;i++){const it=seq[i],e=it.e;const c=(dcount[e.id]||0);const isDone=c<countOn(e.id,today);dcount[e.id]=c+1;
+    h+=`<div class="tlrow ${isDone?'done':''}" data-act="addset" data-id="${e.id}">
+      <div class="t">${spreadTime(i,n)}</div>
+      <div class="b"><div style="font-weight:600;font-size:14px">${esc(e.name)}${it.extra?' <span class="badge">ekstra</span>':''}</div>
+        <div class="muted tiny">set ${it.setNo}/${it.total} · ${fmt(it.v)} ${esc(e.unit)} · RPE ${e.rpe}</div>
+        <div class="tags" style="margin-top:4px">${exTags(e)}</div></div>
+      <div class="k">${isDone?'✓':'○'}</div></div>`;}
+  h+=`</div></div>`;
   return h;
 }
 function signalsCard(today){
@@ -526,14 +588,16 @@ function signalsCard(today){
   let warn=repeat.length?noteBox(`${repeat.join(', ')} iki gün üst üste işaretlendi. Bu hafta şu egzersizlerin hacmini yarıya indir: ${[...names].join(', ')}.`,{color:'var(--orange)',icon:'⚠️'}):'';
   return `<div class="card tight"><div style="font-weight:600">Sabah sertliği veya ağrı var mı?</div><div class="chipwrap" style="margin-top:8px">${chips}</div>${warn?'<div style="margin-top:10px">'+warn+'</div>':''}</div>`;
 }
-function exTile(e,day){
-  const t=target(e,day),done=countOn(e.id,day),complete=done>=t.sets;
+function exTile(e,day,opts){
+  const t=(opts&&opts.t)?opts.t:target(e,day),done=countOn(e.id,day),complete=done>=t.sets;
   return `<div class="card extile" style="padding:12px 8px 12px 16px">
-    <div class="head"><div style="flex:1" data-act="log" data-id="${e.id}"><div class="name">${esc(e.name)}</div>
+    <div class="head"><div style="flex:1" data-act="log" data-id="${e.id}"><div class="name">${esc(e.name)}${opts&&opts.oneoff?' <span class="badge">ekstra</span>':''}</div>
       <div class="muted small">${t.sets} set × ${fmt(t.v)} ${esc(e.unit)}</div></div>
-      <button class="iconsq" data-act="addset" data-id="${e.id}" title="Set ekle">${complete?'✓':'+'}</button></div>
+      ${done>0?`<button class="iconbtn" data-act="undoset" data-id="${e.id}" style="width:38px;height:40px;font-size:17px" title="Son seti geri al">↶</button>`:''}
+      <button class="iconsq" data-act="addset" data-id="${e.id}" title="Set ekle">${complete?'✓':'+'}</button>
+      ${opts&&opts.oneoff?`<button class="iconbtn" data-act="rmoneoff" data-id="${e.id}" style="width:34px;height:40px;font-size:16px" title="Bugünden kaldır">×</button>`:''}</div>
     <div style="display:flex;align-items:center;gap:10px;margin:8px 8px 0 0">
-      <div style="flex:1">${barHtml(Math.min(1,done/t.sets),{cls:'md'})}</div>
+      <div style="flex:1">${barHtml(Math.min(1,t.sets?done/t.sets:0),{cls:'md'})}</div>
       <div class="small" style="font-weight:500">${done}/${t.sets}</div></div>
     <div style="margin:8px 8px 0 0" data-act="log" data-id="${e.id}">${exTags(e)}</div>
     ${e.note?`<div class="muted" style="font-size:12.5px;margin-top:6px" data-act="log" data-id="${e.id}">${esc(e.note)}</div>`:''}</div>`;
@@ -644,6 +708,7 @@ function renderCalendar(){
     const date=new Date(y,mo,dn),pre=dOnly(date)<S.start,ph=phaseOf(date);
     const planned=plannedSets(date),done=doneSetsOn(date),isToday=sameDay(date,today);
     const ch=schedChangesOn(date),hasAdd=ch.some(c=>c.op==='add'),hasRem=ch.some(c=>c.op==='remove');
+    const hasExtra=oneoffIds(dayKey(date)).length>0;
     const fresh=ch.some(c=>daysSince(c.t)<=3);
     const bg=ph!==null?`background:color-mix(in srgb,${PHASE[ph].c} 16%,transparent);box-shadow:inset 3px 0 0 ${PHASE[ph].c};`:'';
     const fill=planned>0?Math.min(1,done/planned):(done>0?1:0);
@@ -652,24 +717,28 @@ function renderCalendar(){
       ${(planned>0||done>0)?`<div class="frac">${done}/${planned}</div>`:''}
       ${planned>0&&done>=planned?'<div class="chk">✓</div>':''}
       ${(planned>0||done>0)?`<div class="dot"><i style="width:${fill*100}%"></i></div>`:''}
+      ${hasExtra?'<span class="mk extra"></span>':''}
       ${hasAdd?`<span class="mk add${fresh?' fresh':''}"></span>`:''}
       ${hasRem?`<span class="mk rem${fresh?' fresh':''}"></span>`:''}</div>`;
   }
   h+=`</div>`;
   h+=`<div class="card tight" style="margin-top:12px"><div class="subhdr" style="padding-top:0">Renkler ve işaretler</div>
     <div class="lgd">${PHASE.map(p=>`<span><span class="sw" style="background:color-mix(in srgb,${p.c} 55%,transparent)"></span>${p.t}</span>`).join('')}</div>
-    <div class="lgd" style="margin-top:8px"><span><span class="d" style="background:var(--green)"></span>egzersiz eklendi</span><span><span class="d" style="background:var(--red)"></span>çıkarıldı</span><span>✓ tamamlandı · yeşil çubuk yapılan/planlanan</span></div></div>`;
+    <div class="lgd" style="margin-top:8px"><span><span class="d" style="background:var(--green)"></span>eklendi</span><span><span class="d" style="background:var(--red)"></span>çıkarıldı</span><span><span class="d" style="background:#8e6cf0"></span>ekstra (bugüne özel)</span><span>✓ tamamlandı</span></div></div>`;
   return h;
 }
 function openDay(key){
   const date=new Date(key+'T12:00:00'),ph=phaseOf(date),wd=weekday(date);
   const planned=plannedOn(date),dmap=doneMap(date),ch=schedChangesOn(date);
-  const doneExtra=Object.keys(dmap).filter(id=>!planned.some(e=>e.id===id));
+  const offs=oneoffsOn(key),offIds=new Set(offs.map(e=>e.id));
+  const doneExtra=Object.keys(dmap).filter(id=>!planned.some(e=>e.id===id)&&!offIds.has(id));
   const dayLogs=S.logs.filter(l=>sameDay(dt(l),date));
   const avg=dayLogs.length?(dayLogs.reduce((a,l)=>a+l.r,0)/dayLogs.length).toFixed(1):null;
   let rows='';
   for(const e of planned){const t=target(e,date),got=dmap[e.id]||0,ok=got>=t.sets;
     rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
+  for(const e of offs){const t=oneoffTarget(e,date),got=dmap[e.id]||0,ok=got>=t.sets;
+    rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="badge" style="background:color-mix(in srgb,#8e6cf0 20%,transparent);color:#8e6cf0">ekstra</span> <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
   for(const id of doneExtra){const e=S.ex(id);if(!e)continue;rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${dmap[id]} set · plan dışı</span></div><div style="color:var(--primary)">＋</div></div>`;}
   let chTxt='';
   const adds=ch.filter(c=>c.op==='add'),rems=ch.filter(c=>c.op==='remove');
@@ -826,6 +895,16 @@ function openDayPicker(d){
   openSheet(`<div class="title-lg">${kDayNames[d-1]} — egzersiz ekle</div>
     <div class="muted small" style="margin:8px 0 12px">Seçtiğin egzersiz bu güne eklenir (gerekirse programa alınır). Tekrar eden her hafta için geçerlidir.</div>
     ${list||'<div class="muted small">Tüm egzersizler bu güne ekli.</div>'}
+    <div style="height:8px"></div><button class="text block" data-act="addcustom">＋ Yeni egzersiz oluştur</button>`);
+}
+function openOneoffPicker(){
+  const key=dayKey(dOnly(new Date())),today=dOnly(new Date());
+  const shown=new Set([...todayList(today).map(e=>e.id),...oneoffIds(key)]);
+  const avail=S.all().filter(e=>!shown.has(e.id)).sort((a,b)=>{const c=(S.active.has(b.id)?1:0)-(S.active.has(a.id)?1:0);return c!==0?c:(kGrpOrder[a.grp]??9)-(kGrpOrder[b.grp]??9);});
+  let list='';for(const e of avail)list+=`<button class="chip" data-act="pickoneoff" data-id="${e.id}" style="display:block;width:100%;text-align:left;margin-bottom:6px">＋ ${esc(e.name)} <span class="muted tiny">· ${esc(e.pattern)}</span></button>`;
+  openSheet(`<div class="title-lg">Bugüne özel egzersiz</div>
+    <div class="muted small" style="margin:8px 0 12px">Yalnızca bugün için eklenir; haftalık programı değiştirmez. Takvimde bu gün “ekstra” olarak işaretlenir. Yaptığın setler normal şekilde tüm analizlere ve dengeye sayılır.</div>
+    ${list||'<div class="muted small">Eklenebilecek başka egzersiz yok. Yeni bir tane oluşturabilirsin.</div>'}
     <div style="height:8px"></div><button class="text block" data-act="addcustom">＋ Yeni egzersiz oluştur</button>`);
 }
 function libNext(){
@@ -1237,8 +1316,13 @@ document.body.addEventListener('click',ev=>{
     case 'settings':openSettings();break;
     case 'resettoday':openDialog(`<div class="title-md">Bugünkü veriler sıfırlansın mı?</div><div class="muted small" style="margin-top:8px">Bugün kaydettiğin setler ve işaretler silinir. Program, geçmiş, rekorlar ve ölçümler etkilenmez.</div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:18px"><button class="text" data-close>Vazgeç</button><button class="fill" id="tdo2">Bugünü sıfırla</button></div>`);overlay.querySelector('#tdo2').onclick=()=>{resetToday();closeOverlay();};break;
     case 'sig':toggleSignal(dayKey(dOnly(new Date())),el.dataset.area);break;
-    case 'addset':{const e=S.ex(id),t=target(e,dOnly(new Date()));addLog(id,t.v,e.rpe);showToast(`${e.name}: ${fmt(t.v)} ${e.unit} kaydedildi`,()=>undoLast(id));break;}
-    case 'log':openLog(S.ex(id),target(S.ex(id),dOnly(new Date())).v);break;
+    case 'addset':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));addLog(id,t.v,e.rpe);showToast(`${e.name}: ${fmt(t.v)} ${e.unit} kaydedildi`,()=>undoLast(id));break;}
+    case 'undoset':{undoLast(id);const e=S.ex(id);showToast(`${e?e.name:'Set'}: son set geri alındı`);break;}
+    case 'spread':spreadOn=!spreadOn;render();break;
+    case 'addoneoff':openOneoffPicker();break;
+    case 'rmoneoff':removeOneoff(id,dayKey(dOnly(new Date())));break;
+    case 'pickoneoff':addOneoff(id,dayKey(dOnly(new Date())));openOneoffPicker();break;
+    case 'log':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));openLog(e,t.v);break;}
     case 'metric':openMetric();break;
     case 'progmode':progMode=+el.dataset.v;render();break;
     case 'panelprev':panelMonth=addMonths(panelMonth||monthStart(new Date()),-1);render();break;
