@@ -1,7 +1,4 @@
-
-
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -173,13 +170,12 @@ details.ex .body{padding:0 16px 14px}
    ║  yapıştır" akışına düşer (hiçbir şey kırılmaz).                 ║
    ╚══════════════════════════════════════════════════════════════╝ */
 const EMBEDDED_FB_CONFIG={
-  piKey: "AIzaSyB-icA97c2D5g3yW9o_4UXlxHA6icTAl-Q",
-  authDomain: "fitnas-8c3e7.firebaseapp.com",
-  projectId: "fitnas-8c3e7",
-  storageBucket: "fitnas-8c3e7.firebasestorage.app",
-  messagingSenderId: "227803385072",
-  appId: "1:227803385072:web:6712105cb3c202f45a8635",
-  measurementId: "G-V1KEWH5YL2"
+  apiKey:"",
+  authDomain:"",
+  projectId:"",
+  storageBucket:"",
+  messagingSenderId:"",
+  appId:""
 };
 const HAS_EMBEDDED=!!(EMBEDDED_FB_CONFIG&&EMBEDDED_FB_CONFIG.apiKey&&EMBEDDED_FB_CONFIG.projectId);
 /* ══════════════ SABİTLER ══════════════ */
@@ -230,7 +226,7 @@ const all7=[1,2,3,4,5,6,7];
 
 /* ══════════════ KATALOG ══════════════ */
 function T(a){return a.map(x=>({sets:x[0],v:x[1]}));}
-function E(id,name,o){return Object.assign({id,name,unit:'tekrar',grp:'Seans',pattern:'',muscles:{},systems:{},days:[],targets:[],rpe:5,impact:false,halfRec:false,custom:false,step:0,note:'',fills:'',block:null,prereqId:null,prereqValue:0,prereqText:''},o);}
+function E(id,name,o){return Object.assign({id,name,unit:'tekrar',grp:'Seans',pattern:'',muscles:{},systems:{},days:[],targets:[],rpe:5,impact:false,halfRec:false,custom:false,step:0,note:'',tempo:'',fills:'',block:null,prereqId:null,prereqValue:0,prereqText:''},o);}
 const kCatalog=[
   E('push','Şınav',{pattern:'Yatay itme',grp:'Baz blok',muscles:{gogus:1,triseps:1,omuz:.5,core:.5},systems:{sinir:1,kas:.5},days:all7,targets:T([[6,5],[6,6],[6,7],[6,4]]),rpe:4,halfRec:true,step:2,note:'Günün içine yay. Konsantrik faz hızlı.'}),
   E('squat','Squat (3 sn iniş, 1 sn altta)',{pattern:'Diz baskın',grp:'Baz blok',muscles:{kuadriseps:1,gluteus:1,kalcaYan:.5},systems:{sinir:1,kas:.5,tendon:.5},days:all7,targets:T([[6,4],[6,5],[6,6],[6,3]]),rpe:4,halfRec:true,step:1,note:'Yavaş iniş, hızlı çıkış.'}),
@@ -289,15 +285,15 @@ const S={
 function effective(base){
   const ov=S.overrides[base.id]; if(!ov)return base;
   return Object.assign({},base,{name:ov.name,note:ov.note,pattern:ov.pattern,unit:ov.unit,days:ov.days,
-    rpe:ov.rpe,impact:ov.impact,halfRec:ov.halfRec,step:ov.step,muscles:ov.muscles,systems:ov.systems,targets:ov.targets});
+    rpe:ov.rpe,impact:ov.impact,halfRec:ov.halfRec,step:ov.step,muscles:ov.muscles,systems:ov.systems,targets:ov.targets,tempo:ov.tempo!=null?ov.tempo:base.tempo});
 }
 function defaultActive(){return kCatalog.filter(e=>e.block===null).map(e=>e.id);}
 function defOf(e){return {name:e.name,note:e.note,pattern:e.pattern,unit:e.unit,days:[...e.days],rpe:e.rpe,
-  impact:e.impact,halfRec:e.halfRec,step:e.step,muscles:{...e.muscles},systems:{...e.systems},
+  impact:e.impact,halfRec:e.halfRec,step:e.step,tempo:e.tempo||'',muscles:{...e.muscles},systems:{...e.systems},
   targets:e.targets.map(t=>({sets:t.sets,v:t.v}))};}
 function customToJ(e){return {id:e.id,def:defOf(e)};}
 function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
-  muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note});}
+  muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note,tempo:d.tempo||''});}
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
   signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,cfg:S.cfg,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
@@ -448,9 +444,9 @@ function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(n
 function saveExercise(id,def){
   const prevDays=id&&S.ex(id)?[...S.ex(id).days]:[];
   let sid=id;
-  if(id&&S.ex(id)&&S.ex(id).custom){const c=S.custom.find(x=>x.id===id);Object.assign(c,{name:def.name,pattern:def.pattern,unit:def.unit,days:def.days,rpe:def.rpe,impact:def.impact,halfRec:def.halfRec,step:def.step,muscles:def.muscles,systems:def.systems,targets:def.targets,note:def.note});}
+  if(id&&S.ex(id)&&S.ex(id).custom){const c=S.custom.find(x=>x.id===id);Object.assign(c,{name:def.name,pattern:def.pattern,unit:def.unit,days:def.days,rpe:def.rpe,impact:def.impact,halfRec:def.halfRec,step:def.step,muscles:def.muscles,systems:def.systems,targets:def.targets,note:def.note,tempo:def.tempo||''});}
   else if(id){S.overrides[id]=def;}
-  else{sid='c_'+Date.now();S.custom.push(E(sid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note}));S.active.add(sid);}
+  else{sid='c_'+Date.now();S.custom.push(E(sid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note,tempo:def.tempo||''}));S.active.add(sid);}
   logSched(sid,prevDays,def.days);
   S.reindex();changed();
 }
@@ -544,6 +540,65 @@ function barHtml(val,{color,cls='',bg}={}){const pct=Math.max(0,Math.min(1,val))
 
 /* ══════════════ BUGÜN ══════════════ */
 let spreadOn=false;
+let timerInt=null,soundOn=true,audioCtx=null,metroTickOn=true,metroEndVolIdx=2;
+const METRO_END_VOLS=[0,0.15,0.3,0.5],METRO_END_LBL=['Kapalı','Kısık','Normal','Yüksek'];
+function ensureAudio(){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
+function beep(freq,dur,vol){try{ensureAudio();if(!audioCtx)return;const t=audioCtx.currentTime;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=freq||660;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.2,t+0.005);g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.08));o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+(dur||0.08)+0.02);}catch(e){}}
+function vibrate(ms){try{if(navigator&&navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
+function openTimer(e,secs){
+  secs=Math.max(1,Math.round(secs||1));let rem=secs,running=false;
+  openSheet(`<div class="title-lg" style="text-align:center">${esc(e.name)}</div>
+    <div class="muted small" style="text-align:center;margin-top:2px">Hedef ${secs} sn · her saniye bip, bitince uzun bip ve titreşim</div>
+    <div id="tmv" style="font-size:66px;font-weight:600;text-align:center;margin:16px 0;font-variant-numeric:tabular-nums">${secs}</div>
+    <div style="display:flex;gap:12px;justify-content:center;align-items:center">
+      <button class="roundbtn" id="tmreset" title="Sıfırla">⟲</button>
+      <button class="fill" id="tmtoggle" style="min-width:140px">▶ Başlat</button>
+      <button class="roundbtn" id="tmsound" title="Ses aç/kapa">${soundOn?'🔊':'🔇'}</button></div>
+    <div id="tmmsg" class="muted small" style="text-align:center;margin-top:12px">&nbsp;</div>`);
+  const tg=overlay.querySelector('#tmtoggle'),msg=overlay.querySelector('#tmmsg');
+  const upd=()=>{const el=overlay.querySelector('#tmv');if(el)el.textContent=rem;};
+  const stop=()=>{running=false;if(timerInt){clearInterval(timerInt);timerInt=null;}if(tg)tg.textContent=rem<secs&&rem>0?'▶ Devam':'▶ Başlat';};
+  const finish=()=>{if(timerInt){clearInterval(timerInt);timerInt=null;}running=false;const el=overlay.querySelector('#tmv');if(el)el.textContent='0';if(soundOn)beep(1200,0.32,0.28);vibrate([120,60,120]);addLog(e.id,secs,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tg)tg.textContent='▶ Tekrar';rem=secs;setTimeout(upd,700);showToast(`${e.name}: ${secs} sn kaydedildi`,()=>undoLast(e.id));};
+  const tick=()=>{rem--;if(rem<=0){finish();return;}if(soundOn)beep(rem<=3?960:660,0.06,0.2);upd();};
+  const start=()=>{if(rem<=0)rem=secs;running=true;if(tg)tg.textContent='⏸ Duraklat';ensureAudio();if(soundOn)beep(660,0.06,0.2);if(msg)msg.textContent='\u00a0';if(timerInt)clearInterval(timerInt);timerInt=setInterval(tick,1000);upd();};
+  tg.onclick=()=>{running?stop():start();};
+  overlay.querySelector('#tmreset').onclick=()=>{stop();rem=secs;upd();if(tg)tg.textContent='▶ Başlat';if(msg)msg.textContent='\u00a0';};
+  const sBtn=overlay.querySelector('#tmsound');sBtn.onclick=()=>{soundOn=!soundOn;sBtn.textContent=soundOn?'🔊':'🔇';if(soundOn){ensureAudio();beep(880,0.06,0.2);}};
+}
+function tempoArr(e){return String(e.tempo||'').split('-').map(x=>parseInt(x,10)).filter(x=>!isNaN(x)&&x>=0);}
+const PHASE_NAMES=['İniş','Alt bekleme','Çıkış','Üst bekleme'];
+function phaseName(i,n){return (n<=4&&PHASE_NAMES[i])?PHASE_NAMES[i]:'Faz '+(i+1);}
+function metroFinishSound(){const v=METRO_END_VOLS[metroEndVolIdx];if(v<=0)return;ensureAudio();beep(784,0.14,v);setTimeout(()=>beep(1047,0.2,v),150);setTimeout(()=>beep(1319,0.24,v),340);}
+function openMetro(e,reps){
+  const cad=tempoArr(e).filter((d,i,a)=>true);let ph=cad.filter(d=>d>0).length?cad:[2,0,2,0];
+  reps=Math.max(1,Math.round(reps||1));
+  const seq=[];for(let r=0;r<reps;r++)ph.forEach((d,pi)=>{for(let s=0;s<d;s++)seq.push({accent:s===0,phase:pi,rep:r});});
+  const N=seq.length,nph=ph.length;let i=0,running=false;
+  const cadTxt=ph.join('-');
+  openSheet(`<div class="title-lg" style="text-align:center">${esc(e.name)}</div>
+    <div class="muted small" style="text-align:center;margin-top:2px">Tempo ${cadTxt} sn · ${reps} tekrar · faz başında vurgulu tık</div>
+    <div id="mph" style="font-size:30px;font-weight:600;text-align:center;margin:14px 0 2px">Hazır</div>
+    <div id="mrep" class="muted" style="text-align:center">Tekrar 0/${reps}</div>
+    <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin-top:16px">
+      <button class="roundbtn" id="mreset" title="Sıfırla">⟲</button>
+      <button class="fill" id="mtoggle" style="min-width:140px">▶ Başlat</button></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+      <button class="out" id="mtick">${metroTickOn?'🔊':'🔇'} Tık sesi</button>
+      <button class="out" id="mend">🏁 Bitiş: ${METRO_END_LBL[metroEndVolIdx]}</button></div>
+    <div id="mmsg" class="muted small" style="text-align:center;margin-top:12px">&nbsp;</div>`);
+  const tgl=overlay.querySelector('#mtoggle'),msg=overlay.querySelector('#mmsg');
+  const showPh=()=>{const it=seq[Math.min(i,N-1)];const p=overlay.querySelector('#mph'),rp=overlay.querySelector('#mrep');
+    if(p)p.textContent=it?phaseName(it.phase,nph):'—';if(rp)rp.textContent=`Tekrar ${it?it.rep+1:reps}/${reps}`;};
+  const playTick=(it)=>{if(!metroTickOn)return;ensureAudio();beep(it.accent?960:620,it.accent?0.07:0.05,0.2);};
+  const stop=()=>{running=false;if(timerInt){clearInterval(timerInt);timerInt=null;}if(tgl)tgl.textContent=i>0&&i<N?'▶ Devam':'▶ Başlat';};
+  const finish=()=>{if(timerInt){clearInterval(timerInt);timerInt=null;}running=false;metroFinishSound();vibrate([140,70,140]);addLog(e.id,reps,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tgl)tgl.textContent='▶ Tekrar';i=0;const p=overlay.querySelector('#mph');if(p)p.textContent='Bitti 🎉';showToast(`${e.name}: ${reps} tekrar (tempo) kaydedildi`,()=>undoLast(e.id));};
+  const step=()=>{i++;if(i>=N){finish();return;}playTick(seq[i]);showPh();};
+  const start=()=>{if(i>=N)i=0;running=true;if(tgl)tgl.textContent='⏸ Duraklat';if(msg)msg.textContent='\u00a0';ensureAudio();playTick(seq[i]);showPh();if(timerInt)clearInterval(timerInt);timerInt=setInterval(step,1000);};
+  tgl.onclick=()=>{running?stop():start();};
+  overlay.querySelector('#mreset').onclick=()=>{stop();i=0;if(tgl)tgl.textContent='▶ Başlat';const p=overlay.querySelector('#mph');if(p)p.textContent='Hazır';const rp=overlay.querySelector('#mrep');if(rp)rp.textContent=`Tekrar 0/${reps}`;if(msg)msg.textContent='\u00a0';};
+  const tk=overlay.querySelector('#mtick');tk.onclick=()=>{metroTickOn=!metroTickOn;tk.textContent=(metroTickOn?'🔊':'🔇')+' Tık sesi';if(metroTickOn){ensureAudio();beep(880,0.06,0.2);}};
+  const en=overlay.querySelector('#mend');en.onclick=()=>{metroEndVolIdx=(metroEndVolIdx+1)%METRO_END_VOLS.length;en.textContent='🏁 Bitiş: '+METRO_END_LBL[metroEndVolIdx];if(METRO_END_VOLS[metroEndVolIdx]>0){ensureAudio();beep(1047,0.14,METRO_END_VOLS[metroEndVolIdx]);}};
+}
 function renderToday(){
   const today=dOnly(new Date()),wk=weekNo(today),idx=(wk-1)%4,list=todayList(today);
   const offs=oneoffsOn(dayKey(today)).filter(e=>!list.some(x=>x.id===e.id));
@@ -597,6 +652,8 @@ function exTile(e,day,opts){
   return `<div class="card extile" style="padding:12px 8px 12px 16px">
     <div class="head"><div style="flex:1" data-act="log" data-id="${e.id}"><div class="name">${esc(e.name)}${opts&&opts.oneoff?' <span class="badge">ekstra</span>':''}</div>
       <div class="muted small">${t.sets} set × ${fmt(t.v)} ${esc(e.unit)}</div></div>
+      ${e.unit==='sn'?`<button class="iconbtn" data-act="timer" data-id="${e.id}" style="width:38px;height:40px;font-size:16px" title="Zamanlayıcı">▶</button>`:''}
+      ${e.unit==='tekrar'&&e.tempo?`<button class="iconbtn" data-act="metro" data-id="${e.id}" style="width:38px;height:40px;font-size:16px" title="Metronom">🎵</button>`:''}
       ${done>0?`<button class="iconbtn" data-act="undoset" data-id="${e.id}" style="width:38px;height:40px;font-size:17px" title="Son seti geri al">↶</button>`:''}
       <button class="iconsq" data-act="addset" data-id="${e.id}" title="Set ekle">${complete?'✓':'+'}</button>
       ${opts&&opts.oneoff?`<button class="iconbtn" data-act="rmoneoff" data-id="${e.id}" style="width:34px;height:40px;font-size:16px" title="Bugünden kaldır">×</button>`:''}</div>
@@ -985,7 +1042,7 @@ function render(){
 const overlay=document.getElementById('overlay');
 function openSheet(html){overlay.innerHTML=`<div class="scrim" data-close></div><div class="sheet"><div class="grab"></div>${html}</div>`;overlay.classList.add('show');}
 function openDialog(html){overlay.innerHTML=`<div class="scrim" data-close></div><div class="dialog">${html}</div>`;overlay.classList.add('show');}
-function closeOverlay(){overlay.classList.remove('show');overlay.innerHTML='';_cloudOpen=false;}
+function closeOverlay(){overlay.classList.remove('show');overlay.innerHTML='';_cloudOpen=false;if(timerInt){clearInterval(timerInt);timerInt=null;}}
 
 /* ── log sheet ── */
 function openLog(e,v0){
@@ -998,12 +1055,16 @@ function openLog(e,v0){
     <div style="margin-top:14px" id="lhint">Zorluk (RPE): ${r} · ${hint(r)}</div>
     <input type="range" min="1" max="10" step="1" value="${r}" id="lrpe" style="margin-top:6px">
     <div style="margin-top:8px"><button class="fill block" id="lsave">✓ Seti kaydet</button></div>
+    ${e.unit==='sn'?`<div style="margin-top:8px"><button class="tonal block" id="ltimer">▶ Zamanlayıcıyı başlat (${fmt(v)} sn)</button></div>`:''}
+    ${e.unit==='tekrar'&&e.tempo?`<div style="margin-top:8px"><button class="tonal block" id="lmetro">🎵 Metronom (tempo ${esc(e.tempo)} · ${fmt(v)} tekrar)</button></div>`:''}
     <div style="text-align:center;margin-top:4px"><button class="text" id="ledit">✎ Bu egzersizi düzenle</button></div>`);
   const val=overlay.querySelector('#lval'),hnt=overlay.querySelector('#lhint'),upd=()=>val.textContent=`${fmt(v)} ${e.unit}`;
-  overlay.querySelector('#lminus').onclick=()=>{v=Math.max(0,v-stepFor());upd();};
-  overlay.querySelector('#lplus').onclick=()=>{v=v+stepFor();upd();};
+  overlay.querySelector('#lminus').onclick=()=>{v=Math.max(0,v-stepFor());upd();const lt=overlay.querySelector('#ltimer');if(lt)lt.textContent=`▶ Zamanlayıcıyı başlat (${fmt(v)} sn)`;const lm=overlay.querySelector('#lmetro');if(lm)lm.textContent=`🎵 Metronom (tempo ${e.tempo} · ${fmt(v)} tekrar)`;};
+  overlay.querySelector('#lplus').onclick=()=>{v=v+stepFor();upd();const lt=overlay.querySelector('#ltimer');if(lt)lt.textContent=`▶ Zamanlayıcıyı başlat (${fmt(v)} sn)`;const lm=overlay.querySelector('#lmetro');if(lm)lm.textContent=`🎵 Metronom (tempo ${e.tempo} · ${fmt(v)} tekrar)`;};
   overlay.querySelector('#lrpe').oninput=ev=>{r=+ev.target.value;hnt.textContent=`Zorluk (RPE): ${r} · ${hint(r)}`;};
   overlay.querySelector('#lsave').onclick=()=>{addLog(e.id,v,r);closeOverlay();};
+  const lt=overlay.querySelector('#ltimer');if(lt)lt.onclick=()=>{openTimer(e,v);};
+  const lmt=overlay.querySelector('#lmetro');if(lmt)lmt.onclick=()=>{openMetro(e,v);};
   overlay.querySelector('#ledit').onclick=()=>{closeOverlay();openEditor(e.id);};
 }
 
@@ -1106,6 +1167,8 @@ function openEditor(id){
     <div class="swrow"><label class="sw"><input type="checkbox" id="ehalf" ${st.halfRec?'checked':''}><span class="tr"></span><span class="kn"></span></label><div>Çar/Paz günleri yarım hacim</div></div>
     <div style="height:8px"></div><div id="erh">Varsayılan zorluk (RPE): ${st.rpe}</div>
     <input type="range" min="1" max="10" step="1" value="${st.rpe}" id="erpe">
+    <div style="height:10px"></div><label class="fld">Tempo (sn, opsiyonel) — ör. 3-1-1-0 (iniş-bekle-çıkış-bekle). Tekrar birimli egzersizlerde 🎵 metronom açar.</label>
+    <input type="text" id="etempo" inputmode="numeric" value="${base?esc(base.tempo||''):''}" placeholder="3-1-1-0">
     <div style="height:8px"></div><label class="fld">Not (opsiyonel)</label><textarea id="enote">${base?esc(base.note):''}</textarea>
     <div class="errmsg" id="eerr" style="display:none"></div>
     <div style="height:12px"></div><button class="fill block" id="esave">${id?'Kaydet':'Programa ekle'}</button>
@@ -1153,7 +1216,8 @@ function openEditor(id){
     for(const s of st.primS)systems[s]=1;for(const s of st.auxS)if(!systems[s])systems[s]=.5;
     const def={name,pattern:overlay.querySelector('#epat').value.trim()||'Özel',unit:st.unit,days:[...st.days].sort((a,b)=>a-b),
       rpe:st.rpe,impact:overlay.querySelector('#eimp').checked,halfRec:overlay.querySelector('#ehalf').checked,
-      step:isNaN(num('#estep'))?0:num('#estep'),muscles,systems,targets,note:overlay.querySelector('#enote').value.trim()};
+      step:isNaN(num('#estep'))?0:num('#estep'),muscles,systems,targets,note:overlay.querySelector('#enote').value.trim(),
+      tempo:(overlay.querySelector('#etempo').value||'').replace(/[^0-9-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'')};
     saveExercise(id,def);closeOverlay();};
   const rb=overlay.querySelector('#ereset');if(rb)rb.onclick=()=>{resetExercise(id);closeOverlay();};
   const db=overlay.querySelector('#edel');if(db)db.onclick=()=>{if(confirm('Bu özel egzersiz silinsin mi?')){removeCustom(id);closeOverlay();}};
@@ -1322,6 +1386,8 @@ document.body.addEventListener('click',ev=>{
     case 'sig':toggleSignal(dayKey(dOnly(new Date())),el.dataset.area);break;
     case 'addset':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));addLog(id,t.v,e.rpe);showToast(`${e.name}: ${fmt(t.v)} ${e.unit} kaydedildi`,()=>undoLast(id));break;}
     case 'undoset':{undoLast(id);const e=S.ex(id);showToast(`${e?e.name:'Set'}: son set geri alındı`);break;}
+    case 'timer':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));openTimer(e,t.v);break;}
+    case 'metro':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));openMetro(e,t.v);break;}
     case 'spread':spreadOn=!spreadOn;render();break;
     case 'addoneoff':openOneoffPicker();break;
     case 'rmoneoff':removeOneoff(id,dayKey(dOnly(new Date())));break;
