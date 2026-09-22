@@ -196,6 +196,7 @@ const SINFO={
   tendonDiz:{label:'Diz/patellar tendon',desc:'Squat, duvar oturuşu, çömelme (yavaş uyum)',hours:72,color:'#3d8f7a',icon:'🔗'},
   tendonAsil:{label:'Aşil/baldır tendonu',desc:'Koşu, ip, sıçrama (yavaş uyum)',hours:72,color:'#1f8f8f',icon:'🔗'},
   tendonKalca:{label:'Kalça/leğen bağ dokusu',desc:'Kalça menteşesi, hamstring bağı (yavaş uyum)',hours:72,color:'#3aa07a',icon:'🔗'},
+  tendon:{label:'Tendon / bağ (genel)',desc:'Eski genel tendon etiketi',hours:72,color:'#26a69a',icon:'🔗'},
   kemik:{label:'Kemik',desc:'Darbe ve yük uyaranı (yavaş uyum)',hours:72,color:'#a1887f',icon:'🦴'},
   mobilite:{label:'Mobilite',desc:'Aktif ve pasif hareket açıklığı',hours:24,color:'#ec6a9c',icon:'🧘'},
   reaktif:{label:'Reaktif güç',desc:'Germe-kısalma döngüsü, çeviklik',hours:72,color:'#ffa726',icon:'↕️'},
@@ -314,10 +315,17 @@ function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,un
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
   signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,pain:S.pain,painLog:S.painLog,painAction:S.painAction,cfg:S.cfg,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
+function migrateTendon(){
+  const map={squat:'tendonDiz',wallsit:'tendonDiz',wallpush:'tendonItme',chin:'tendonKol',pullNeg:'tendonKol',hang:'tendonKol',rdl1:'tendonKalca',sideplank:'tendonItme',wallhard:'tendonItme',bulgar:'tendonDiz',cossack:'tendonDiz',run:'tendonAsil',rope:'tendonAsil',nordic:'tendonKalca',pogo:'tendonAsil',archer:'tendonItme',clap:'tendonItme',carry:'tendonKol',pullup:'tendonKol'};
+  const fix=(sysObj,id)=>{if(sysObj&&sysObj.tendon!=null){const to=map[id]||'tendonKalca';if(sysObj[to]==null)sysObj[to]=sysObj.tendon;delete sysObj.tendon;}};
+  for(const id in S.overrides){if(S.overrides[id])fix(S.overrides[id].systems,id);}
+  for(const c of S.custom)fix(c.systems,c.id);
+}
 function applyState(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.overrides=d.overrides||{};
   S.custom=(d.custom||[]).map(customFromJ);
+  migrateTendon();
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
@@ -578,8 +586,8 @@ function addMonths(d,k){return new Date(d.getFullYear(),d.getMonth()+k,1);}
 
 /* ══════════════ HTML PARÇALARI ══════════════ */
 function tag(text,color,icon){return `<span class="tag" style="color:${color};background:color-mix(in srgb,${color} 15%,transparent)">${icon?`<span class="em">${icon}</span>`:''}${esc(text)}</span>`;}
-function exTags(e){let s='<div class="tags">';for(const m in e.muscles)if(e.muscles[m]>=1)s+=tag(MINFO[m].label,'var(--onvar)');
-  for(const sy in e.systems)if(e.systems[sy]>=1)s+=tag(SINFO[sy].label,SINFO[sy].color,SINFO[sy].icon);return s+'</div>';}
+function exTags(e){let s='<div class="tags">';for(const m in e.muscles)if(e.muscles[m]>=1&&MINFO[m])s+=tag(MINFO[m].label,'var(--onvar)');
+  for(const sy in e.systems)if(e.systems[sy]>=1&&SINFO[sy])s+=tag(SINFO[sy].label,SINFO[sy].color,SINFO[sy].icon);return s+'</div>';}
 function sec(t,sub){return `<div class="sec"><div class="t">${esc(t)}</div>${sub?`<div class="s">${esc(sub)}</div>`:''}</div>`;}
 function noteBox(t,{color,icon}={}){const c=color||'var(--primary)';return `<div class="note" style="color:${c};background:color-mix(in srgb,${c} 14%,transparent)"><span class="em">${icon||'ℹ️'}</span><div style="color:var(--onsurf)">${esc(t)}</div></div>`;}
 function barHtml(val,{color,cls='',bg}={}){const pct=Math.max(0,Math.min(1,val))*100;return `<div class="bar ${cls}" ${bg?`style="background:${bg}"`:''}><i style="width:${pct}%${color?`;background:${color}`:''}"></i></div>`;}
