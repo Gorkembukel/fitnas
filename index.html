@@ -135,6 +135,7 @@ details.ex .body{padding:0 16px 14px}
 .mk.add{right:3px;background:var(--green);color:var(--green)}
 .mk.rem{left:3px;background:var(--red);color:var(--red)}
 .mk.extra{top:3px;left:50%;margin-left:-3.5px;background:#8e6cf0;color:#8e6cf0}
+.mk.pain{top:auto;bottom:11px;left:4px;width:7px;height:7px}
 .tl{}
 .tlrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--divider);cursor:pointer}
 .tlrow:last-child{border-bottom:none}
@@ -180,7 +181,7 @@ const EMBEDDED_FB_CONFIG={
 const HAS_EMBEDDED=!!(EMBEDDED_FB_CONFIG&&EMBEDDED_FB_CONFIG.apiKey&&EMBEDDED_FB_CONFIG.projectId);
 /* ══════════════ SABİTLER ══════════════ */
 const M_ORDER=['gogus','omuz','triseps','lat','ustSirt','biseps','onkol','kuadriseps','hamstring','gluteus','baldir','core','coreRot','kalcaYan'];
-const S_ORDER=['sinir','kas','tendon','kemik','mobilite','reaktif','aerobik','anaerobik'];
+const S_ORDER=['sinir','kas','tendonKol','tendonItme','tendonDiz','tendonAsil','tendonKalca','kemik','mobilite','reaktif','aerobik','anaerobik'];
 const MINFO={
   gogus:{label:'Göğüs',region:'Üst vücut: itme'},omuz:{label:'Omuz',region:'Üst vücut: itme'},triseps:{label:'Triseps',region:'Üst vücut: itme'},
   lat:{label:'Sırt (lat)',region:'Üst vücut: çekme'},ustSirt:{label:'Üst sırt / arka omuz',region:'Üst vücut: çekme'},biseps:{label:'Biseps',region:'Üst vücut: çekme'},onkol:{label:'Ön kol / kavrama',region:'Üst vücut: çekme'},
@@ -190,7 +191,11 @@ const MINFO={
 const SINFO={
   sinir:{label:'Sinir sistemi',desc:'Koordinasyon, motor ünite devşirme, hız',hours:48,color:'#8e6cf0',icon:'⚡'},
   kas:{label:'Kas',desc:'Kesit alanı, kuvvet',hours:48,color:'#4a90e2',icon:'🏋️'},
-  tendon:{label:'Tendon / bağ',desc:'Sertlik, enerji depolama (yavaş uyum)',hours:72,color:'#26a69a',icon:'🔗'},
+  tendonKol:{label:'Dirsek/ön kol tendonu',desc:'Çekiş, asılma, kavrama (yavaş uyum)',hours:72,color:'#26a69a',icon:'🔗'},
+  tendonItme:{label:'İtme tendonu (omuz/dirsek)',desc:'Şınav, duvar itme, itme yükü (yavaş uyum)',hours:72,color:'#2f9e93',icon:'🔗'},
+  tendonDiz:{label:'Diz/patellar tendon',desc:'Squat, duvar oturuşu, çömelme (yavaş uyum)',hours:72,color:'#3d8f7a',icon:'🔗'},
+  tendonAsil:{label:'Aşil/baldır tendonu',desc:'Koşu, ip, sıçrama (yavaş uyum)',hours:72,color:'#1f8f8f',icon:'🔗'},
+  tendonKalca:{label:'Kalça/leğen bağ dokusu',desc:'Kalça menteşesi, hamstring bağı (yavaş uyum)',hours:72,color:'#3aa07a',icon:'🔗'},
   kemik:{label:'Kemik',desc:'Darbe ve yük uyaranı (yavaş uyum)',hours:72,color:'#a1887f',icon:'🦴'},
   mobilite:{label:'Mobilite',desc:'Aktif ve pasif hareket açıklığı',hours:24,color:'#ec6a9c',icon:'🧘'},
   reaktif:{label:'Reaktif güç',desc:'Germe-kısalma döngüsü, çeviklik',hours:72,color:'#ffa726',icon:'↕️'},
@@ -202,62 +207,74 @@ const kDayShort=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 const kSessions={1:'Kuvvet A',2:'Koşu günü',3:'Toparlanma ve yoga',4:'Kuvvet B: tendon',5:'İp ve gölge boks',6:'Uzun Zone 2',7:'Toparlanma ve yoga'};
 const kGrpOrder={'Seans':0,'Baz blok':1,'Çekme':2,'Özel':3};
 const kAreas=['Dirsek','Omuz','Bilek','Diz','Aşil','Bel'];
+const PAIN_AREAS=[
+  {sys:'tendonKol',label:'Dirsek / ön kol'},
+  {sys:'tendonItme',label:'Omuz / itme'},
+  {sys:'tendonDiz',label:'Diz'},
+  {sys:'tendonAsil',label:'Aşil / baldır'},
+  {sys:'tendonKalca',label:'Kalça / bel'}
+];
+const PAIN_LVL=[{t:'Yok',c:'var(--green)'},{t:'Hafif',c:'var(--orange)'},{t:'Orta',c:'#e8892b'},{t:'Şiddetli',c:'var(--red)'}];
+const PAIN_AMBER='#e8892b';
+const TENDONS=['tendonKol','tendonItme','tendonDiz','tendonAsil','tendonKalca'];
 const kAreaEx={'Dirsek':['chin','pullNeg','pullup','hang','row1'],'Omuz':['push','wallpush','wallhard','shadow','archer','clap'],'Bilek':['push','wallpush','wallhard','archer','clap'],'Diz':['squat','wallsit','bulgar','run','pogo'],'Aşil':['run','rope','pogo'],'Bel':['rdl1','row1','deadbug','carry']};
 const kKinds=['Kilo (kg)','Bel çevresi (cm)','Dinlenik nabız (bpm)'];
 const kIntervals=[7,14,21,28,42,56];
 const kMonths=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const PHASE=[{t:'Hafta 1',c:'#3aa0a0'},{t:'Hafta 2',c:'#3a76d8'},{t:'Hafta 3',c:'#6a4ee0'},{t:'Deload',c:'#c9820b'}];
 const CFG_DEFAULT={
-  recovery:{sinir:48,kas:48,tendon:72,kemik:72,mobilite:24,reaktif:72,aerobik:24,anaerobik:48},
+  recovery:{sinir:48,kas:48,tendonKol:72,tendonItme:72,tendonDiz:72,tendonAsil:72,tendonKalca:72,kemik:72,mobilite:24,reaktif:72,aerobik:24,anaerobik:48},
   openBelow:1, lowBelow:8, window:7,
   gapOpen:2, gapLow:1, gapAux:false, balanceRatio:0.5,
-  rpe:{f8:1,f7:0.75,f6:0.5,f5:0.35,f0:0.2}, impactFactor:0.75, lookbackHours:96,
-  halfDays:[3,7], gtgRpe:5, spaceMinHours:24
+  rpe:{f8:1,f7:0.75,f6:0.5,f5:0.35,f0:0.2}, impactFactor:0.75, lookbackHours:96, overloadMult:1, setStrain:0.15,
+  halfDays:[3,7], gtgRpe:5, spaceMinHours:24,
+  painHalfLevel:2, painSkipLevel:3, painStrain:[0,12,24,48]
 };
 function mergeCfg(s){s=s||{};return {
   recovery:Object.assign({},CFG_DEFAULT.recovery,s.recovery||{}),
   openBelow:s.openBelow??CFG_DEFAULT.openBelow, lowBelow:s.lowBelow??CFG_DEFAULT.lowBelow, window:s.window??CFG_DEFAULT.window,
   gapOpen:s.gapOpen??CFG_DEFAULT.gapOpen, gapLow:s.gapLow??CFG_DEFAULT.gapLow, gapAux:s.gapAux??CFG_DEFAULT.gapAux, balanceRatio:s.balanceRatio??CFG_DEFAULT.balanceRatio,
-  rpe:Object.assign({},CFG_DEFAULT.rpe,s.rpe||{}), impactFactor:s.impactFactor??CFG_DEFAULT.impactFactor, lookbackHours:s.lookbackHours??CFG_DEFAULT.lookbackHours,
-  halfDays:Array.isArray(s.halfDays)?s.halfDays.slice():CFG_DEFAULT.halfDays.slice(), gtgRpe:s.gtgRpe??CFG_DEFAULT.gtgRpe, spaceMinHours:s.spaceMinHours??CFG_DEFAULT.spaceMinHours
+  rpe:Object.assign({},CFG_DEFAULT.rpe,s.rpe||{}), impactFactor:s.impactFactor??CFG_DEFAULT.impactFactor, lookbackHours:s.lookbackHours??CFG_DEFAULT.lookbackHours, overloadMult:s.overloadMult??CFG_DEFAULT.overloadMult, setStrain:s.setStrain??CFG_DEFAULT.setStrain,
+  halfDays:Array.isArray(s.halfDays)?s.halfDays.slice():CFG_DEFAULT.halfDays.slice(), gtgRpe:s.gtgRpe??CFG_DEFAULT.gtgRpe, spaceMinHours:s.spaceMinHours??CFG_DEFAULT.spaceMinHours,
+  painHalfLevel:s.painHalfLevel??CFG_DEFAULT.painHalfLevel, painSkipLevel:s.painSkipLevel??CFG_DEFAULT.painSkipLevel, painStrain:Array.isArray(s.painStrain)?s.painStrain.slice():CFG_DEFAULT.painStrain.slice()
 };}
 function recHours(s){return S.cfg.recovery[s]!=null?S.cfg.recovery[s]:CFG_DEFAULT.recovery[s];}
 const all7=[1,2,3,4,5,6,7];
 
 /* ══════════════ KATALOG ══════════════ */
 function T(a){return a.map(x=>({sets:x[0],v:x[1]}));}
-function E(id,name,o){return Object.assign({id,name,unit:'tekrar',grp:'Seans',pattern:'',muscles:{},systems:{},days:[],targets:[],rpe:5,impact:false,halfRec:false,custom:false,step:0,note:'',tempo:'',fills:'',block:null,prereqId:null,prereqValue:0,prereqText:''},o);}
+function E(id,name,o){return Object.assign({id,name,unit:'tekrar',grp:'Seans',pattern:'',muscles:{},systems:{},days:[],targets:[],rpe:5,impact:false,halfRec:false,custom:false,step:0,note:'',tempo:'',recovery:'',fills:'',block:null,prereqId:null,prereqValue:0,prereqText:''},o);}
 const kCatalog=[
   E('push','Şınav',{pattern:'Yatay itme',grp:'Baz blok',muscles:{gogus:1,triseps:1,omuz:.5,core:.5},systems:{sinir:1,kas:.5},days:all7,targets:T([[6,5],[6,6],[6,7],[6,4]]),rpe:4,halfRec:true,step:2,note:'Günün içine yay. Konsantrik faz hızlı.'}),
-  E('squat','Squat (3 sn iniş, 1 sn altta)',{pattern:'Diz baskın',grp:'Baz blok',muscles:{kuadriseps:1,gluteus:1,kalcaYan:.5},systems:{sinir:1,kas:.5,tendon:.5},days:all7,targets:T([[6,4],[6,5],[6,6],[6,3]]),rpe:4,halfRec:true,step:1,note:'Yavaş iniş, hızlı çıkış.'}),
-  E('wallsit','Duvar oturuşu',{pattern:'Diz baskın (izometrik)',unit:'sn',grp:'Baz blok',muscles:{kuadriseps:1,gluteus:.5},systems:{tendon:1,kas:.5},days:all7,targets:T([[2,35],[2,40],[2,45],[2,30]]),rpe:5,halfRec:true,step:5}),
-  E('wallpush','Duvar itme (hafif, 140°)',{pattern:'Yatay itme (izometrik)',unit:'sn',grp:'Baz blok',muscles:{gogus:1,triseps:1,omuz:.5,baldir:.5},systems:{tendon:1,sinir:.5},days:all7,targets:T([[2,40],[2,40],[2,40],[2,40]]),rpe:4,halfRec:true,note:'20 sn sol bacak geride, 20 sn sağ bacak geride.'}),
-  E('chin','Chin-up (avuç içi sana)',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,biseps:1,onkol:.5},systems:{sinir:1,kas:1,tendon:.5},days:[1,4,6],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:8,note:'Setler arası en az 1 saat.'}),
-  E('pullNeg','Pull-up negatifi',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,ustSirt:.5,biseps:.5,onkol:.5},systems:{sinir:.5,kas:1,tendon:1},days:[2,5,7],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:7,note:'Yukarı zıpla veya sandalyeden çık, 4-5 sn kontrollü in.'}),
-  E('hang','Aktif asılma',{pattern:'Dikey çekme (izometrik)',unit:'sn',grp:'Çekme',muscles:{onkol:1,lat:.5,ustSirt:.5},systems:{tendon:1,mobilite:.5},days:[3],targets:T([[3,15],[3,15],[3,20],[3,15]]),rpe:4}),
+  E('squat','Squat (3 sn iniş, 1 sn altta)',{pattern:'Diz baskın',grp:'Baz blok',muscles:{kuadriseps:1,gluteus:1,kalcaYan:.5},systems:{sinir:1,kas:.5,tendonDiz:.5},days:all7,targets:T([[6,4],[6,5],[6,6],[6,3]]),rpe:4,halfRec:true,step:1,note:'Yavaş iniş, hızlı çıkış.'}),
+  E('wallsit','Duvar oturuşu',{pattern:'Diz baskın (izometrik)',unit:'sn',grp:'Baz blok',muscles:{kuadriseps:1,gluteus:.5},systems:{tendonDiz:1,kas:.5},days:all7,targets:T([[2,35],[2,40],[2,45],[2,30]]),rpe:5,halfRec:true,step:5}),
+  E('wallpush','Duvar itme (hafif, 140°)',{pattern:'Yatay itme (izometrik)',unit:'sn',grp:'Baz blok',muscles:{gogus:1,triseps:1,omuz:.5,baldir:.5},systems:{tendonItme:1,sinir:.5},days:all7,targets:T([[2,40],[2,40],[2,40],[2,40]]),rpe:4,halfRec:true,note:'20 sn sol bacak geride, 20 sn sağ bacak geride.'}),
+  E('chin','Chin-up (avuç içi sana)',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,biseps:1,onkol:.5},systems:{sinir:1,kas:1,tendonKol:.5},days:[1,4,6],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:8,note:'Setler arası en az 1 saat.'}),
+  E('pullNeg','Pull-up negatifi',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,ustSirt:.5,biseps:.5,onkol:.5},systems:{sinir:.5,kas:1,tendonKol:1},days:[2,5,7],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:7,note:'Yukarı zıpla veya sandalyeden çık, 4-5 sn kontrollü in.'}),
+  E('hang','Aktif asılma',{pattern:'Dikey çekme (izometrik)',unit:'sn',grp:'Çekme',muscles:{onkol:1,lat:.5,ustSirt:.5},systems:{tendonKol:1,mobilite:.5},days:[3],targets:T([[3,15],[3,15],[3,20],[3,15]]),rpe:4}),
   E('row1','Tek kol kürek (çanta)',{pattern:'Yatay çekme',muscles:{lat:1,ustSirt:1,biseps:.5,onkol:.5},systems:{kas:1,sinir:.5},days:[1],targets:T([[3,8],[3,9],[3,10],[2,8]]),rpe:7,note:'Her kol için ayrı set. 3 sn iniş.'}),
-  E('rdl1','Tek bacak RDL',{pattern:'Kalça baskın',muscles:{hamstring:1,gluteus:1,core:.5},systems:{kas:1,sinir:.5,tendon:.5},days:[1],targets:T([[3,6],[3,7],[3,8],[2,6]]),rpe:6,note:'Her bacak için ayrı set. 3 sn iniş.'}),
+  E('rdl1','Tek bacak RDL',{pattern:'Kalça baskın',muscles:{hamstring:1,gluteus:1,core:.5},systems:{kas:1,sinir:.5,tendonKalca:.5},days:[1],targets:T([[3,6],[3,7],[3,8],[2,6]]),rpe:6,note:'Her bacak için ayrı set. 3 sn iniş.'}),
   E('bridge1','Tek bacak glüte köprüsü',{pattern:'Kalça baskın',muscles:{gluteus:1,hamstring:.5,core:.5},systems:{kas:1,sinir:.5},days:[1],targets:T([[3,8],[3,9],[3,10],[2,8]]),rpe:6,note:'Üstte 2 sn bekle. Her bacak ayrı set.'}),
   E('deadbug','Dead bug',{pattern:'Core · bastırma',muscles:{core:1,coreRot:.5},systems:{sinir:1,kas:.5},days:[1],targets:T([[3,6],[3,7],[3,8],[2,6]]),rpe:5}),
-  E('sideplank','Yan plank',{pattern:'Core · rotasyon',unit:'sn',muscles:{coreRot:1,kalcaYan:.5,omuz:.5},systems:{tendon:.5,kas:.5,sinir:.5},days:[1],targets:T([[2,20],[2,25],[2,30],[2,20]]),rpe:5,note:'Her yan ayrı set.'}),
-  E('wallhard','Duvar itme (yüksek efor)',{pattern:'Yatay itme (izometrik)',unit:'sn',muscles:{gogus:1,triseps:1,omuz:1},systems:{tendon:1,sinir:.5},days:[1,4],targets:T([[4,10],[4,10],[4,10],[2,10]]),rpe:8,note:'Pzt: 100° ve 130° (2 set her açı). Per: 130° ve 160°.'}),
-  E('bulgar','Bulgar split squat',{pattern:'Diz baskın (tek bacak)',muscles:{kuadriseps:1,gluteus:1,kalcaYan:.5},systems:{kas:1,tendon:.5,sinir:.5,kemik:.5},days:[4],targets:T([[0,0],[0,0],[3,5],[2,5]]),rpe:6,note:"Hafta 3'ten itibaren. Her bacak ayrı set."}),
-  E('cossack','Cossack squat',{pattern:'Diz baskın (yan düzlem)',muscles:{kalcaYan:1,kuadriseps:.5,gluteus:.5},systems:{mobilite:1,kas:.5,tendon:.5},days:[4],targets:T([[0,0],[0,0],[3,5],[2,5]]),rpe:5,note:"Hafta 3'ten itibaren. Her yan ayrı set."}),
+  E('sideplank','Yan plank',{pattern:'Core · rotasyon',unit:'sn',muscles:{coreRot:1,kalcaYan:.5,omuz:.5},systems:{tendonItme:.5,kas:.5,sinir:.5},days:[1],targets:T([[2,20],[2,25],[2,30],[2,20]]),rpe:5,note:'Her yan ayrı set.'}),
+  E('wallhard','Duvar itme (yüksek efor)',{pattern:'Yatay itme (izometrik)',unit:'sn',muscles:{gogus:1,triseps:1,omuz:1},systems:{tendonItme:1,sinir:.5},days:[1,4],targets:T([[4,10],[4,10],[4,10],[2,10]]),rpe:8,note:'Pzt: 100° ve 130° (2 set her açı). Per: 130° ve 160°.'}),
+  E('bulgar','Bulgar split squat',{pattern:'Diz baskın (tek bacak)',muscles:{kuadriseps:1,gluteus:1,kalcaYan:.5},systems:{kas:1,tendonDiz:.5,sinir:.5,kemik:.5},days:[4],targets:T([[0,0],[0,0],[3,5],[2,5]]),rpe:6,note:"Hafta 3'ten itibaren. Her bacak ayrı set."}),
+  E('cossack','Cossack squat',{pattern:'Diz baskın (yan düzlem)',muscles:{kalcaYan:1,kuadriseps:.5,gluteus:.5},systems:{mobilite:1,kas:.5,tendonDiz:.5},days:[4],targets:T([[0,0],[0,0],[3,5],[2,5]]),rpe:5,note:"Hafta 3'ten itibaren. Her yan ayrı set."}),
   E('hip9090','90/90 rotasyon',{pattern:'Mobilite',muscles:{kalcaYan:1,gluteus:.5},systems:{mobilite:1,sinir:.5},days:[4],targets:T([[0,0],[0,0],[2,5],[2,5]]),rpe:4,note:"Hafta 3'ten itibaren."}),
   E('bike','Bisiklet (koşu günü, 25 + 40 dk)',{pattern:'Kardiyo · düşük darbe',unit:'dk',muscles:{kuadriseps:.5,gluteus:.5,baldir:.5},systems:{aerobik:.5},days:[2],targets:T([[1,65],[1,65],[1,65],[1,65]]),rpe:3}),
-  E('run','Koşu',{pattern:'Kardiyo · darbe',unit:'dk',muscles:{baldir:1,kuadriseps:.5,gluteus:.5,hamstring:.5},systems:{aerobik:1,kemik:1,tendon:1},days:[2],targets:T([[1,15],[1,16],[1,17],[1,15]]),rpe:5,impact:true,note:'Konuşma temposu. Haftada en fazla +1 dk.'}),
-  E('rope','İp atlama',{pattern:'Reaktif',unit:'dk',muscles:{baldir:1,kuadriseps:.5,omuz:.5,onkol:.5},systems:{reaktif:1,tendon:1,kemik:.5,aerobik:.5},days:[5],targets:T([[1,5],[1,5],[1,5],[1,5]]),rpe:6,impact:true,note:'30 sn atla, 30 sn dinlen. Düşük sıçrama.'}),
+  E('run','Koşu',{pattern:'Kardiyo · darbe',unit:'dk',muscles:{baldir:1,kuadriseps:.5,gluteus:.5,hamstring:.5},systems:{aerobik:1,kemik:1,tendonAsil:1},days:[2],targets:T([[1,15],[1,16],[1,17],[1,15]]),rpe:5,impact:true,note:'Konuşma temposu. Haftada en fazla +1 dk.'}),
+  E('rope','İp atlama',{pattern:'Reaktif',unit:'dk',muscles:{baldir:1,kuadriseps:.5,omuz:.5,onkol:.5},systems:{reaktif:1,tendonAsil:1,kemik:.5,aerobik:.5},days:[5],targets:T([[1,5],[1,5],[1,5],[1,5]]),rpe:6,impact:true,note:'30 sn atla, 30 sn dinlen. Düşük sıçrama.'}),
   E('shadow','Gölge boks (3 dk raund)',{pattern:'Boks',unit:'dk',muscles:{omuz:1,coreRot:1,kuadriseps:.5,baldir:.5},systems:{anaerobik:1,sinir:1,aerobik:.5},days:[5],targets:T([[4,3],[4,3],[5,3],[3,3]]),rpe:7,note:'Her set bir raund, arada 1 dk dinlenme.'}),
   E('zone2','Uzun Zone 2 bisiklet',{pattern:'Kardiyo · düşük darbe',unit:'dk',muscles:{kuadriseps:.5,gluteus:.5,baldir:.5},systems:{aerobik:1},days:[6],targets:T([[1,60],[1,70],[1,80],[1,60]]),rpe:4,note:'Konuşma testi belirleyici.'}),
   E('yoga','Yoga / tam vücut esneme',{pattern:'Mobilite',unit:'dk',muscles:{hamstring:.5,kalcaYan:.5,omuz:.5,lat:.5},systems:{mobilite:1},days:[3,7],targets:T([[1,15],[1,15],[1,15],[1,15]]),rpe:2}),
-  E('nordic','Kademeli Nordic curl',{pattern:'Kalça baskın',muscles:{hamstring:1,gluteus:.5},systems:{kas:1,tendon:1,sinir:.5},days:[4],targets:T([[3,3],[3,4],[3,5],[2,3]]),rpe:7,block:'Blok 2',prereqId:'rdl1',prereqValue:8,prereqText:'Tek bacak RDL 3×8, RPE 6 altında',fills:'Hamstring eksantrik kuvveti ve yaralanma direnci',note:'Ayak bileklerini sabitle, çok yavaş in, ellerle yumuşak karşıla.'}),
-  E('pogo','Pogo hop (düşük genlik)',{pattern:'Reaktif',muscles:{baldir:1,kuadriseps:.5},systems:{reaktif:1,tendon:1,kemik:.5},days:[5],targets:T([[3,10],[3,12],[3,15],[2,10]]),rpe:6,impact:true,block:'Blok 2',prereqId:'rope',prereqValue:5,prereqText:'İp atlamayı 5 dk sorunsuz bitir, Aşil sabah sertliği olmasın',fills:'Ayak bileği sertliği, reaktif güç',note:'Kısa yer teması, yumuşak zemin. Derinlik atlaması yok.'}),
+  E('nordic','Kademeli Nordic curl',{pattern:'Kalça baskın',muscles:{hamstring:1,gluteus:.5},systems:{kas:1,tendonKalca:1,sinir:.5},days:[4],targets:T([[3,3],[3,4],[3,5],[2,3]]),rpe:7,block:'Blok 2',prereqId:'rdl1',prereqValue:8,prereqText:'Tek bacak RDL 3×8, RPE 6 altında',fills:'Hamstring eksantrik kuvveti ve yaralanma direnci',note:'Ayak bileklerini sabitle, çok yavaş in, ellerle yumuşak karşıla.'}),
+  E('pogo','Pogo hop (düşük genlik)',{pattern:'Reaktif',muscles:{baldir:1,kuadriseps:.5},systems:{reaktif:1,tendonAsil:1,kemik:.5},days:[5],targets:T([[3,10],[3,12],[3,15],[2,10]]),rpe:6,impact:true,block:'Blok 2',prereqId:'rope',prereqValue:5,prereqText:'İp atlamayı 5 dk sorunsuz bitir, Aşil sabah sertliği olmasın',fills:'Ayak bileği sertliği, reaktif güç',note:'Kısa yer teması, yumuşak zemin. Derinlik atlaması yok.'}),
   E('sprint','Bisiklet sprint aralığı',{pattern:'Kardiyo · düşük darbe',unit:'sn',muscles:{kuadriseps:1,gluteus:.5,baldir:.5},systems:{anaerobik:1,sinir:.5,aerobik:.5},days:[6],targets:T([[6,20],[8,20],[8,20],[4,20]]),rpe:9,block:'Blok 2',prereqId:'zone2',prereqValue:70,prereqText:'Zone 2 seansını 70 dk konuşma temposunda bitir',fills:'Anaerobik kapasite, düşük darbeli hız uyaranı',note:'20 sn tam gaz, 100 sn rahat. İki haftada bir Zone 2 yerine.'}),
-  E('archer','Arşer şınav',{pattern:'Yatay itme',muscles:{gogus:1,triseps:1,omuz:.5,core:.5},systems:{sinir:1,kas:1,tendon:.5},days:[1,4],targets:T([[3,3],[3,4],[3,5],[2,3]]),rpe:7,block:'Blok 2',prereqId:'push',prereqValue:7,prereqText:'Şınav 6×7, RPE 6 altında',fills:'Yatay itme yoğunluğu, tek kol kuvveti',note:'Her yan ayrı set.'}),
-  E('clap','Patlayıcı şınav (eller yerden kalkar)',{pattern:'Yatay itme',muscles:{gogus:1,triseps:1,omuz:.5},systems:{reaktif:1,sinir:1,tendon:.5},days:[1],targets:T([[4,3],[4,3],[4,4],[2,3]]),rpe:8,block:'Blok 2',prereqId:'push',prereqValue:10,prereqText:'Şınav set başına 10 tekrarı rahat yap',fills:'Üst vücut reaktif gücü (yumruk hızına transfer)',note:'Tam dinlenmeyle, yorgunken yapma.'}),
+  E('archer','Arşer şınav',{pattern:'Yatay itme',muscles:{gogus:1,triseps:1,omuz:.5,core:.5},systems:{sinir:1,kas:1,tendonItme:.5},days:[1,4],targets:T([[3,3],[3,4],[3,5],[2,3]]),rpe:7,block:'Blok 2',prereqId:'push',prereqValue:7,prereqText:'Şınav 6×7, RPE 6 altında',fills:'Yatay itme yoğunluğu, tek kol kuvveti',note:'Her yan ayrı set.'}),
+  E('clap','Patlayıcı şınav (eller yerden kalkar)',{pattern:'Yatay itme',muscles:{gogus:1,triseps:1,omuz:.5},systems:{reaktif:1,sinir:1,tendonItme:.5},days:[1],targets:T([[4,3],[4,3],[4,4],[2,3]]),rpe:8,block:'Blok 2',prereqId:'push',prereqValue:10,prereqText:'Şınav set başına 10 tekrarı rahat yap',fills:'Üst vücut reaktif gücü (yumruk hızına transfer)',note:'Tam dinlenmeyle, yorgunken yapma.'}),
   E('pallof','Pallof press (bant)',{pattern:'Core · rotasyon',muscles:{coreRot:1,core:.5},systems:{sinir:1,kas:.5},days:[4],targets:T([[3,8],[3,8],[3,10],[2,8]]),rpe:5,block:'Bant gerekli',prereqText:'Direnç bandı al',fills:'Anti-rotasyon core',note:'Her yan ayrı set.'}),
-  E('carry','Çanta taşıma (loaded carry)',{pattern:'Taşıma',unit:'sn',muscles:{onkol:1,core:1,ustSirt:.5,baldir:.5},systems:{kas:.5,tendon:.5,kemik:.5,sinir:.5},days:[1],targets:T([[3,30],[3,40],[3,45],[2,30]]),rpe:6,block:'Blok 2',prereqText:'Kriter yok, hazır hissettiğinde ekle',fills:'Taşıma kalıbı, kavrama, gövde stabilitesi',note:'Bir elde ağır çanta. Dik dur, omuzlar kapalı.'}),
-  E('pullup','Pull-up (tam tekrar)',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,ustSirt:.5,biseps:.5,onkol:.5},systems:{sinir:1,kas:1,tendon:.5},days:[2,5,7],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:8,block:'Hedef',prereqId:'chin',prereqValue:2,prereqText:'Chin-up 2 tekrar ve negatif 5 sn kontrollü',fills:'Dikey çekme hedefi',note:'Negatifin yerine geçer, ekleyince negatifi kapat.'}),
+  E('carry','Çanta taşıma (loaded carry)',{pattern:'Taşıma',unit:'sn',muscles:{onkol:1,core:1,ustSirt:.5,baldir:.5},systems:{kas:.5,tendonKol:.5,kemik:.5,sinir:.5},days:[1],targets:T([[3,30],[3,40],[3,45],[2,30]]),rpe:6,block:'Blok 2',prereqText:'Kriter yok, hazır hissettiğinde ekle',fills:'Taşıma kalıbı, kavrama, gövde stabilitesi',note:'Bir elde ağır çanta. Dik dur, omuzlar kapalı.'}),
+  E('pullup','Pull-up (tam tekrar)',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,ustSirt:.5,biseps:.5,onkol:.5},systems:{sinir:1,kas:1,tendonKol:.5},days:[2,5,7],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:8,block:'Hedef',prereqId:'chin',prereqValue:2,prereqText:'Chin-up 2 tekrar ve negatif 5 sn kontrollü',fills:'Dikey çekme hedefi',note:'Negatifin yerine geçer, ekleyince negatifi kapat.'}),
 ];
 
 /* ══════════════ YARDIMCILAR ══════════════ */
@@ -277,7 +294,7 @@ function status(v){const c=S.cfg;return v<c.openBelow?{t:'Açıkta',c:'var(--red
 const KEY='antrenman_takip_v2';
 const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, schedLog:[], oneoff:[], cfg:mergeCfg(), _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], oneoff:[], pain:{}, painLog:[], painAction:[], cfg:mergeCfg(), _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
@@ -285,17 +302,17 @@ const S={
 function effective(base){
   const ov=S.overrides[base.id]; if(!ov)return base;
   return Object.assign({},base,{name:ov.name,note:ov.note,pattern:ov.pattern,unit:ov.unit,days:ov.days,
-    rpe:ov.rpe,impact:ov.impact,halfRec:ov.halfRec,step:ov.step,muscles:ov.muscles,systems:ov.systems,targets:ov.targets,tempo:ov.tempo!=null?ov.tempo:base.tempo});
+    rpe:ov.rpe,impact:ov.impact,halfRec:ov.halfRec,step:ov.step,muscles:ov.muscles,systems:ov.systems,targets:ov.targets,tempo:ov.tempo!=null?ov.tempo:base.tempo,recovery:ov.recovery!=null?ov.recovery:base.recovery});
 }
 function defaultActive(){return kCatalog.filter(e=>e.block===null).map(e=>e.id);}
 function defOf(e){return {name:e.name,note:e.note,pattern:e.pattern,unit:e.unit,days:[...e.days],rpe:e.rpe,
-  impact:e.impact,halfRec:e.halfRec,step:e.step,tempo:e.tempo||'',muscles:{...e.muscles},systems:{...e.systems},
+  impact:e.impact,halfRec:e.halfRec,step:e.step,tempo:e.tempo||'',recovery:e.recovery||'',muscles:{...e.muscles},systems:{...e.systems},
   targets:e.targets.map(t=>({sets:t.sets,v:t.v}))};}
 function customToJ(e){return {id:e.id,def:defOf(e)};}
 function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
-  muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note,tempo:d.tempo||''});}
+  muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note,tempo:d.tempo||'',recovery:d.recovery||''});}
 function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
-  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,cfg:S.cfg,custom:S.custom.map(customToJ),
+  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,pain:S.pain,painLog:S.painLog,painAction:S.painAction,cfg:S.cfg,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
 function applyState(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
@@ -304,7 +321,7 @@ function applyState(d){
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.oneoff=d.oneoff||[];S.cfg=mergeCfg(d.cfg);
+  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.oneoff=d.oneoff||[];S.pain=d.pain||{};S.painLog=d.painLog||[];S.painAction=d.painAction||[];S.cfg=mergeCfg(d.cfg);
   S._updatedAt=d.updatedAt||Date.now();
 }
 function load(){
@@ -318,7 +335,7 @@ function load(){
 function migrateV1(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.cfg=mergeCfg();
+  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();
   S.custom=(d.custom||[]).map(j=>{const muscles={},systems={};for(const n of (j.m||[]))muscles[n]=1;for(const n of (j.s||[]))systems[n]=1;
     const t={sets:j.sets,v:j.v};return E(j.id,j.name,{pattern:j.pattern||'Özel',unit:j.unit,grp:'Özel',custom:true,muscles,systems,days:j.days,targets:[t,{...t},{...t},{...t}],rpe:j.rpe});});
   S.reindex();
@@ -435,7 +452,7 @@ function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 function setStart(d){S.start=dOnly(d);changed();}
 function setTestInterval(n){S.testInterval=n;changed();}
 function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
 function resetCfg(){S.cfg=mergeCfg();changed();}
 /* ── egzersiz düzenleme ── */
 function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(newD);
@@ -444,9 +461,9 @@ function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(n
 function saveExercise(id,def){
   const prevDays=id&&S.ex(id)?[...S.ex(id).days]:[];
   let sid=id;
-  if(id&&S.ex(id)&&S.ex(id).custom){const c=S.custom.find(x=>x.id===id);Object.assign(c,{name:def.name,pattern:def.pattern,unit:def.unit,days:def.days,rpe:def.rpe,impact:def.impact,halfRec:def.halfRec,step:def.step,muscles:def.muscles,systems:def.systems,targets:def.targets,note:def.note,tempo:def.tempo||''});}
+  if(id&&S.ex(id)&&S.ex(id).custom){const c=S.custom.find(x=>x.id===id);Object.assign(c,{name:def.name,pattern:def.pattern,unit:def.unit,days:def.days,rpe:def.rpe,impact:def.impact,halfRec:def.halfRec,step:def.step,muscles:def.muscles,systems:def.systems,targets:def.targets,note:def.note,tempo:def.tempo||'',recovery:def.recovery||''});}
   else if(id){S.overrides[id]=def;}
-  else{sid='c_'+Date.now();S.custom.push(E(sid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note,tempo:def.tempo||''}));S.active.add(sid);}
+  else{sid='c_'+Date.now();S.custom.push(E(sid,def.name,{pattern:def.pattern,unit:def.unit,grp:'Özel',custom:true,muscles:def.muscles,systems:def.systems,days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,impact:def.impact,halfRec:def.halfRec,note:def.note,tempo:def.tempo||'',recovery:def.recovery||''}));S.active.add(sid);}
   logSched(sid,prevDays,def.days);
   S.reindex();changed();
 }
@@ -464,12 +481,41 @@ function systemLoad(days){days=days??S.cfg.window;const from=Date.now()-days*864
   for(const l of S.logs){if(l.t<from)continue;const e=S.ex(l.e);if(!e)continue;for(const s in e.systems)r[s]+=e.systems[s];}return r;}
 function patternSets(key,days){days=days??S.cfg.window;const from=Date.now()-days*86400000;let n=0;
   for(const l of S.logs){if(l.t<from)continue;const e=S.ex(l.e);if(e&&e.pattern.includes(key))n++;}return n;}
-function recLeft(s){const now=Date.now();let left=0;const R=S.cfg;
-  for(let i=S.logs.length-1;i>=0;i--){const l=S.logs[i];const ageMs=now-l.t;if(Math.floor(ageMs/3600000)>R.lookbackHours)break;
-    const e=S.ex(l.e);if(!e)continue;if((e.systems[s]||0)<1)continue;
-    let f=l.r>=8?R.rpe.f8:l.r===7?R.rpe.f7:l.r===6?R.rpe.f6:l.r===5?R.rpe.f5:R.rpe.f0;
-    if(e.impact&&(s==='tendon'||s==='kemik'||s==='reaktif'))f=Math.max(f,R.impactFactor);
-    const rem=recHours(s)*f-ageMs/3600000;if(rem>left)left=rem;}return left;}
+function rpeFactor(r){const R=S.cfg.rpe;return r>=8?R.f8:r===7?R.f7:r===6?R.f6:r===5?R.f5:R.f0;}
+function exRecovery(e){const v=parseFloat(e.recovery);if(!isNaN(v)&&v>0)return v;let m=0;for(const sy in e.systems)if(e.systems[sy]>=1)m=Math.max(m,recHours(sy));return m||recHours('mobilite');}
+function sysThreshold(s){return recHours(s)*(S.cfg.overloadMult||1);}
+// birikmiş: son antrenmanlardan gelen kalan iyileşmelerin toplamı (egzersiz-gün başına bir kez)
+function sysRecovery(s){const now=Date.now(),R=S.cfg,cap=Math.max(R.lookbackHours,30*24),groups={};
+  for(let i=S.logs.length-1;i>=0;i--){const l=S.logs[i];const ageH=(now-l.t)/3600000;if(ageH>cap)break;
+    const e=S.ex(l.e);if(!e)continue;const w=e.systems[s]||0;if(w<=0)continue;
+    const key=l.e+'|'+dayKey(dt(l));const g=groups[key]||(groups[key]={t:0,r:0,e,w,n:0});if(l.t>g.t)g.t=l.t;if(l.r>g.r)g.r=l.r;g.n++;}
+  let sum=0;for(const k in groups){const g=groups[k];let f=rpeFactor(g.r);
+    if(g.e.impact&&(s.indexOf('tendon')===0||s==='kemik'||s==='reaktif'))f=Math.max(f,R.impactFactor);
+    const setFac=1+(R.setStrain||0)*Math.max(0,g.n-1);
+    const rem=exRecovery(g.e)*g.w*f*setFac-(now-g.t)/3600000;if(rem>0)sum+=rem;}
+  const pl=painNow(s);if(pl>0)sum+=(R.painStrain[pl]||0);
+  return sum;}
+/* ── ağrı / durum ── */
+function painNow(s){return S.pain[s]||0;}
+function setPain(s,lvl){lvl=Math.max(0,Math.min(3,lvl|0));if((S.pain[s]||0)===lvl)return;S.pain[s]=lvl;S.painLog.push({s,level:lvl,t:Date.now()});changed();}
+function painAt(s,X){const evs=S.painLog.filter(z=>z.s===s).sort((a,b)=>a.t-b.t);if(!evs.length)return 0;const Xend=dOnly(X).getTime()+86400000-1;let last=0;for(const z of evs){if(z.t<=Xend)last=z.level;else break;}return last;}
+function painActionOf(id,key){const a=S.painAction.find(x=>x.e===id&&x.d===key);return a?a.mode:null;}
+function setPainAction(id,mode){const key=dayKey(dOnly(new Date()));S.painAction=S.painAction.filter(x=>!(x.e===id&&x.d===key));if(mode&&mode!=='clear')S.painAction.push({e:id,d:key,mode});changed();}
+function painStatus(e,date){
+  const key=dayKey(date),man=painActionOf(e.id,key);
+  if(man==='skip')return {mode:'skip',source:'manual'};
+  if(man==='half')return {mode:'half',source:'manual'};
+  if(man==='normal')return {mode:'normal',source:'manual'};
+  const today=sameDay(date,new Date());let lvl=0;
+  for(const s in e.systems)if(e.systems[s]>=1){const pl=today?painNow(s):painAt(s,date);if(pl>lvl)lvl=pl;}
+  const C=S.cfg;
+  if(lvl>=C.painSkipLevel)return {mode:'skip',source:'system',level:lvl};
+  if(lvl>=C.painHalfLevel)return {mode:'half',source:'system',level:lvl};
+  if(lvl>=1)return {mode:'flag',source:'system',level:lvl};
+  return {mode:'normal'};
+}
+function effSets(e,date){const t=target(e,date);if(!t)return 0;const ps=painStatus(e,date);if(ps.mode==='skip')return 0;if(ps.mode==='half')return Math.max(1,Math.ceil(t.sets/2));return t.sets;}
+function painExercises(sys){return S.all().filter(e=>S.active.has(e.id)&&(e.systems[sys]||0)>=1);}
 function bestOf(id){let b=null;for(const l of S.logs)if(l.e===id&&(b===null||l.v>b))b=l.v;
   for(const m of S.maxes)if(m.e===id&&(b===null||m.v>b))b=m.v;return b;}
 function prereqMet(e){if(!e.prereqId)return null;const b=bestOf(e.prereqId);return b!==null&&b>=e.prereqValue;}
@@ -503,8 +549,8 @@ function oneoffTarget(e,day){return target(e,day)||{sets:(e.targets[0]?e.targets
 /* ── gün içine yayma (spread) ── */
 function spreadPlan(today){
   const rem=[];
-  for(const e of todayList(today)){const t=target(e,today);const left=t.sets-countOn(e.id,today);if(left>0)rem.push({e,total:t.sets,left,v:t.v,extra:false});}
-  for(const e of oneoffsOn(dayKey(today))){if(todayList(today).some(x=>x.id===e.id))continue;const t=oneoffTarget(e,today);const left=t.sets-countOn(e.id,today);if(left>0)rem.push({e,total:t.sets,left,v:t.v,extra:true});}
+  for(const e of todayList(today)){const es=effSets(e,today);const t=target(e,today);const half=painStatus(e,today).mode==='half';const left=es-countOn(e.id,today);if(left>0)rem.push({e,total:es,left,v:t.v,extra:false,half});}
+  for(const e of oneoffsOn(dayKey(today))){if(todayList(today).some(x=>x.id===e.id))continue;const es=effSets(e,today);const t=oneoffTarget(e,today);const half=painStatus(e,today).mode==='half';const left=es-countOn(e.id,today);if(left>0)rem.push({e,total:es,left,v:t.v,extra:true,half});}
   const seq=[],recM={},recS={};let idx=0;const total=rem.reduce((a,r)=>a+r.left,0);
   while(seq.length<total){
     let best=null,bs=-1e9;
@@ -515,7 +561,7 @@ function spreadPlan(today){
       for(const sy in r.e.systems)if(r.e.systems[sy]>=1&&recS[sy]!=null){const g=idx-recS[sy];if(g<cd)s-=(cd-g)*4;}
       if(s>bs){bs=s;best=r;}}
     if(!best)break;best.left--;
-    seq.push({e:best.e,setNo:best.total-best.left,total:best.total,v:best.v,extra:best.extra});
+    seq.push({e:best.e,setNo:best.total-best.left,total:best.total,v:best.v,extra:best.extra,half:best.half});
     for(const m in best.e.muscles)if(best.e.muscles[m]>=1)recM[m]=idx;
     for(const sy in best.e.systems)if(best.e.systems[sy]>=1)recS[sy]=idx;
     idx++;}
@@ -602,14 +648,14 @@ function openMetro(e,reps){
 function renderToday(){
   const today=dOnly(new Date()),wk=weekNo(today),idx=(wk-1)%4,list=todayList(today);
   const offs=oneoffsOn(dayKey(today)).filter(e=>!list.some(x=>x.id===e.id));
-  let done=0,tot=0;for(const e of list){const t=target(e,today);tot+=t.sets;done+=Math.min(t.sets,countOn(e.id,today));}
-  for(const e of offs){const t=oneoffTarget(e,today);tot+=t.sets;done+=Math.min(t.sets,countOn(e.id,today));}
+  let done=0,tot=0;for(const e of list){const es=effSets(e,today);tot+=es;done+=Math.min(es,countOn(e.id,today));}
+  for(const e of offs){const es=effSets(e,today);tot+=es;done+=Math.min(es,countOn(e.id,today));}
   let h=`<div class="card"><div class="title-lg">${esc(kDayNames[weekday(today)-1])}: ${esc(kSessions[weekday(today)])}</div>
     <div class="muted" style="margin-top:4px">Hafta ${wk} · ${idx===3?'deload haftası (yük %30-40 az)':'yükleme haftası '+(idx+1)+'/3'}</div>
     <div style="margin-top:14px">${barHtml(tot===0?0:done/tot)}</div>
     <div class="small" style="margin-top:6px">${done} / ${tot} set tamamlandı</div></div>`;
   if(wk>=4)h+=noteBox('Blok 1 bitmek üzere. Program → Öneriler sekmesinde Blok 2 adaylarını kontrol et. Bir döngü bitince hedefler otomatik artar.',{icon:'🚩'});
-  h+=signalsCard(today);
+  h+=painBanner(today);
   if(list.length||offs.length)h+=`<button class="out block" data-act="spread" style="margin-bottom:10px">${spreadOn?'✓ Güne yayılmış sıra açık — normal görünüme dön':'🕐 Güne yayılmış sırayı göster'}</button>`;
   if(list.length===0&&offs.length===0)h+=noteBox('Bugün için aktif egzersiz yok. Program sekmesinden egzersiz ekleyebilir ya da aşağıdan bugüne özel bir hareket ekleyebilirsin.');
   if(spreadOn&&(list.length||offs.length))h+=spreadView(today);
@@ -618,7 +664,7 @@ function renderToday(){
     if(offs.length){h+=sec('Ekstra (bugüne özel)','Sadece bugün için eklendi, programı değiştirmez');for(const e of offs)h+=exTile(e,today,{t:oneoffTarget(e,today),oneoff:true});}
   }
   h+=`<div style="text-align:center;margin-top:6px"><button class="text" data-act="addoneoff">＋ Bugüne özel egzersiz ekle</button></div>`;
-  const hasToday=S.logs.some(l=>sameDay(dt(l),today))||(S.signals[dayKey(today)]||[]).length>0;
+  const hasToday=S.logs.some(l=>sameDay(dt(l),today))||S.painAction.some(x=>x.d===dayKey(today));
   if(hasToday)h+=`<div style="text-align:center;margin-top:6px"><button class="text" data-act="resettoday" style="color:var(--red)">↺ Bugünü sıfırla</button></div>`;
   return h;
 }
@@ -627,45 +673,103 @@ function spreadView(today){
   if(!n)return noteBox('Bugün için kalan set yok — hepsi tamamlandı. 🎉',{color:'var(--green)',icon:'✓'});
   const now=new Date();let startH=now.getHours()+now.getMinutes()/60;if(startH>23.5)startH=23.5;
   let endH=Math.max(startH+0.5,22);if(endH>23.9)endH=23.9;
-  let h=noteBox('Kalan setler, şu andan itibaren gün içine dağıtıldı. Aynı kas/sistem arka arkaya gelmez; RPE yükseldikçe daha çok ara bırakılır. Tamamladığın setler listeden düşer, kalan yeniden yayılır. Saatler öneridir.',{icon:'🕐'});
+  let h=noteBox('Kalan setler, şu andan itibaren gün içine dağıtıldı. Aynı kas/sistem arka arkaya gelmez; RPE yükseldikçe daha çok ara bırakılır. Ağrı nedeniyle yarım/pasif olanlar buna göre alınır. Saatler öneridir.',{icon:'🕐'});
   h+=`<div class="card tight"><div class="tl">`;
   for(let i=0;i<n;i++){const it=seq[i],e=it.e;
     h+=`<div class="tlrow" data-act="addset" data-id="${e.id}">
       <div class="t">${spreadTime(i,n,startH,endH)}</div>
-      <div class="b"><div style="font-weight:600;font-size:14px">${esc(e.name)}${it.extra?' <span class="badge">ekstra</span>':''}</div>
+      <div class="b"><div style="font-weight:600;font-size:14px">${esc(e.name)}${it.extra?' <span class="badge">ekstra</span>':''}${it.half?' <span class="badge" style="background:color-mix(in srgb,'+PAIN_AMBER+' 22%,transparent);color:'+PAIN_AMBER+'">yarım (ağrı)</span>':''}</div>
         <div class="muted tiny">set ${it.setNo}/${it.total} · ${fmt(it.v)} ${esc(e.unit)} · RPE ${e.rpe}</div>
         <div class="tags" style="margin-top:4px">${exTags(e)}</div></div>
       <div class="k">○</div></div>`;}
   h+=`</div></div>`;
   return h;
 }
-function signalsCard(today){
-  const now=S.signals[dayKey(today)]||[],prev=S.signals[dayKey(new Date(today.getTime()-86400000))]||[];
-  const repeat=now.filter(a=>prev.includes(a)),names=new Set();
-  for(const a of repeat)for(const id of (kAreaEx[a]||[])){const n=S.ex(id)?.name;if(n)names.add(n);}
-  let chips='';for(const a of kAreas)chips+=`<button class="chip ${now.includes(a)?'sel':''}" data-act="sig" data-area="${esc(a)}">${now.includes(a)?'✓ ':''}${esc(a)}</button>`;
-  let warn=repeat.length?noteBox(`${repeat.join(', ')} iki gün üst üste işaretlendi. Bu hafta şu egzersizlerin hacmini yarıya indir: ${[...names].join(', ')}.`,{color:'var(--orange)',icon:'⚠️'}):'';
-  return `<div class="card tight"><div style="font-weight:600">Sabah sertliği veya ağrı var mı?</div><div class="chipwrap" style="margin-top:8px">${chips}</div>${warn?'<div style="margin-top:10px">'+warn+'</div>':''}</div>`;
+function painBanner(today){
+  const act=PAIN_AREAS.filter(a=>painNow(a.sys)>0);
+  if(!act.length)return '';
+  const maxLvl=Math.max(...act.map(a=>painNow(a.sys)));
+  const col=maxLvl>=S.cfg.painSkipLevel?'var(--red)':PAIN_AMBER;
+  const parts=act.map(a=>`${a.label}: ${PAIN_LVL[painNow(a.sys)].t}`);
+  return noteBox(`Aktif ağrı — ${parts.join(' · ')}. Etkilenen hareketler aşağıda işaretlendi (orta = yarım yük, şiddetli = atlandı). Dereceyi Denge → Durum'dan güncelle.`,{color:col,icon:'🩹'});
 }
 function exTile(e,day,opts){
-  const t=(opts&&opts.t)?opts.t:target(e,day),done=countOn(e.id,day),complete=done>=t.sets;
-  return `<div class="card extile" style="padding:12px 8px 12px 16px">
+  const base=(opts&&opts.t)?opts.t:target(e,day),done=countOn(e.id,day),ps=painStatus(e,day);
+  let shown=base.sets,badge='',accent='';
+  if(ps.mode==='skip'){accent='var(--red)';badge=`<span class="badge" style="background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red)">ağrı — atlandı${ps.source==='manual'?' (elle)':''}</span>`;}
+  else if(ps.mode==='half'){shown=Math.max(1,Math.ceil(base.sets/2));accent=PAIN_AMBER;badge=`<span class="badge" style="background:color-mix(in srgb,${PAIN_AMBER} 22%,transparent);color:${PAIN_AMBER}">yarım yük (ağrı)${ps.source==='manual'?' · elle':''}</span>`;}
+  else if(ps.mode==='flag'){accent='var(--orange)';badge=`<span class="badge" style="background:color-mix(in srgb,var(--orange) 20%,transparent);color:var(--orange)">dikkat (ağrı)</span>`;}
+  else if(ps.source==='manual'){badge=`<span class="badge">ağrı: normal (elle)</span>`;}
+  const complete=shown>0&&done>=shown;
+  const cardStyle='padding:12px 8px 12px 16px;'+(accent?`box-shadow:inset 4px 0 0 ${accent};`:'')+(ps.mode==='skip'?'opacity:.6;':'');
+  return `<div class="card extile" style="${cardStyle}">
     <div class="head"><div style="flex:1" data-act="log" data-id="${e.id}"><div class="name">${esc(e.name)}${opts&&opts.oneoff?' <span class="badge">ekstra</span>':''}</div>
-      <div class="muted small">${t.sets} set × ${fmt(t.v)} ${esc(e.unit)}</div></div>
-      ${e.unit==='sn'?`<button class="iconbtn" data-act="timer" data-id="${e.id}" style="width:38px;height:40px;font-size:16px" title="Zamanlayıcı">▶</button>`:''}
-      ${e.unit==='tekrar'&&e.tempo?`<button class="iconbtn" data-act="metro" data-id="${e.id}" style="width:38px;height:40px;font-size:16px" title="Metronom">🎵</button>`:''}
-      ${done>0?`<button class="iconbtn" data-act="undoset" data-id="${e.id}" style="width:38px;height:40px;font-size:17px" title="Son seti geri al">↶</button>`:''}
+      <div class="muted small">${shown} set × ${fmt(base.v)} ${esc(e.unit)}${shown!==base.sets?` <span style="color:${PAIN_AMBER}">(tam ${base.sets})</span>`:''}</div>${badge?'<div style="margin-top:4px">'+badge+'</div>':''}</div>
+      <button class="iconbtn" data-act="painmenu" data-id="${e.id}" style="width:34px;height:40px;font-size:15px" title="Ağrı: yarım/atla">🩹</button>
+      ${e.unit==='sn'?`<button class="iconbtn" data-act="timer" data-id="${e.id}" style="width:34px;height:40px;font-size:16px" title="Zamanlayıcı">▶</button>`:''}
+      ${e.unit==='tekrar'&&e.tempo?`<button class="iconbtn" data-act="metro" data-id="${e.id}" style="width:34px;height:40px;font-size:16px" title="Metronom">🎵</button>`:''}
+      ${done>0?`<button class="iconbtn" data-act="undoset" data-id="${e.id}" style="width:34px;height:40px;font-size:17px" title="Son seti geri al">↶</button>`:''}
       <button class="iconsq" data-act="addset" data-id="${e.id}" title="Set ekle">${complete?'✓':'+'}</button>
-      ${opts&&opts.oneoff?`<button class="iconbtn" data-act="rmoneoff" data-id="${e.id}" style="width:34px;height:40px;font-size:16px" title="Bugünden kaldır">×</button>`:''}</div>
+      ${opts&&opts.oneoff?`<button class="iconbtn" data-act="rmoneoff" data-id="${e.id}" style="width:30px;height:40px;font-size:16px" title="Bugünden kaldır">×</button>`:''}</div>
     <div style="display:flex;align-items:center;gap:10px;margin:8px 8px 0 0">
-      <div style="flex:1">${barHtml(Math.min(1,t.sets?done/t.sets:0),{cls:'md'})}</div>
-      <div class="small" style="font-weight:500">${done}/${t.sets}</div></div>
+      <div style="flex:1">${barHtml(Math.min(1,shown?done/shown:0),{cls:'md',color:accent||undefined})}</div>
+      <div class="small" style="font-weight:500">${done}/${shown}</div></div>
     <div style="margin:8px 8px 0 0" data-act="log" data-id="${e.id}">${exTags(e)}</div>
     ${e.note?`<div class="muted" style="font-size:12.5px;margin-top:6px" data-act="log" data-id="${e.id}">${esc(e.note)}</div>`:''}</div>`;
 }
+function openPainMenu(e){
+  const key=dayKey(dOnly(new Date())),man=painActionOf(e.id,key),ps=painStatus(e,dOnly(new Date()));
+  const sysInfo=ps.source==='system'&&ps.mode!=='normal'?`Sistem durumu bu hareketi bugün "${ps.mode==='skip'?'atla':ps.mode==='half'?'yarım yük':'dikkat'}" olarak işaretledi. Buradan elle değiştirebilirsin (yalnızca bugün).`:'Bu hareketi ağrı nedeniyle yalnızca bugün için ayarla.';
+  const opt=(mode,label,desc)=>`<button class="chip ${man===mode?'sel':''}" data-act="setpain" data-id="${e.id}" data-mode="${mode}" style="display:block;width:100%;text-align:left;margin-bottom:8px;padding:12px"><div style="font-weight:600">${label}</div><div class="muted tiny">${desc}</div></button>`;
+  openSheet(`<div class="title-lg">${esc(e.name)}</div>
+    <div class="muted small" style="margin:8px 0 12px">${sysInfo}</div>
+    ${opt('normal','Normal','Tam yük — sistem ağrısı olsa bile bugün normal yap')}
+    ${opt('half','Yarım yük (ağrı)','Bugünkü set sayısı yarıya iner')}
+    ${opt('skip','Bugün atla (ağrı)','Pasif — listede kalır ama önerilmez')}
+    ${man?`<div style="text-align:center;margin-top:4px"><button class="text" data-act="setpain" data-id="${e.id}" data-mode="clear" style="color:var(--red)">Elle ayarı kaldır</button></div>`:''}`);
+}
 
 /* ══════════════ DENGE ══════════════ */
+let balMode=0;
 function renderBalance(){
+  let h=`<div style="height:8px"></div><div class="seg">
+    <button class="${balMode===0?'on':''}" data-act="balmode" data-v="0">🎯 Analiz</button>
+    <button class="${balMode===1?'on':''}" data-act="balmode" data-v="1">🩹 Durum</button></div><div style="height:8px"></div>`;
+  return h+(balMode===0?renderBalanceAnaliz():renderStatus());
+}
+function renderStatus(){
+  let h=sec('Ağrı / durum','Ağrıyan bölgeyi derecelendir. Seçtiğin an o sistemi yükleyen hareketler Bugün’de otomatik ayarlanır: orta = yarım yük, şiddetli = pasif. Ayar sen değiştirene kadar kalır.');
+  for(const a of PAIN_AREAS){const lvl=painNow(a.sys),affected=painExercises(a.sys);
+    let seg='';for(let i=0;i<4;i++)seg+=`<button class="chip ${lvl===i?'sel':''}" data-act="setpainlvl" data-sys="${a.sys}" data-lvl="${i}" style="flex:1;justify-content:center;color:${lvl===i?'':PAIN_LVL[i].c}">${PAIN_LVL[i].t}</button>`;
+    const eff=lvl>=S.cfg.painSkipLevel?'bu hareketler bugün pasif':lvl>=S.cfg.painHalfLevel?'bu hareketler bugün yarım yük':lvl>=1?'dikkat işaretli (yük değişmez)':'';
+    h+=`<div class="card tight">
+      <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:600">${esc(a.label)}</div>
+        ${lvl>0?`<span class="dpill" style="background:color-mix(in srgb,${PAIN_LVL[lvl].c} 20%,transparent);color:${PAIN_LVL[lvl].c}">${PAIN_LVL[lvl].t}</span>`:''}</div>
+      <div class="muted tiny" style="margin:4px 0 8px">${esc(SINFO[a.sys].label)} · yükleyen: ${affected.length?affected.map(e=>esc(e.name)).join(', '):'—'}</div>
+      <div style="display:flex;gap:6px">${seg}</div>
+      ${eff?`<div class="tiny" style="margin-top:8px;color:${PAIN_LVL[lvl].c}">→ ${eff}${affected.length&&lvl>=S.cfg.painHalfLevel?': '+affected.map(e=>e.name).join(', '):''}</div>`:''}</div>`;}
+  const anyPain=PAIN_AREAS.some(a=>painNow(a.sys)>0);
+  if(anyPain)h+=noteBox('Ağrı, ilgili sistemin toparlanma yüküne de eklenir (Analiz sekmesinde daha uzun “yükte” görünür). Geçince dereceyi Yok’a çek.',{icon:'ℹ️'});
+  h+=`<div class="muted" style="font-size:12px;line-height:1.45;margin-top:6px">Eşikler ve ağrı penaltıları Ayarlar → Analiz ve kurallar → Ağrı bölümünden değiştirilebilir. Tek bir hareketi bugünlük ayrıca ayarlamak için Bugün’deki 🩹 düğmesini kullan.</div>`;
+  return h;
+}
+function openTendonDetail(){
+  let rows='';
+  for(const s of TENDONS){const st=status(systemLoad(S.cfg.window)[s]||0);const rec=sysRecovery(s),thr=sysThreshold(s),over=rec>thr;
+    const sl=systemLoad(S.cfg.window)[s]||0;const pl=painNow(s);
+    rows+=`<div class="card tight" style="margin-bottom:8px${over?';box-shadow:inset 4px 0 0 var(--red)':''}">
+      <div style="display:flex;align-items:center;gap:10px"><div style="font-size:20px">🔗</div>
+        <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div>
+          <div class="muted tiny">eşik ${Math.round(thr)} sa${pl>0?` · ağrı: ${PAIN_LVL[pl].t}`:''}</div>
+          <div style="margin-top:6px">${barHtml(thr?rec/thr:0,{color:over?'var(--red)':'#26a69a',cls:'md',bg:'var(--surfhi)'})}</div></div>
+        <div style="text-align:right;min-width:74px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(sl)} · ${st.t}</div>
+          <div style="margin-top:4px;display:flex;justify-content:flex-end">${rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa','var(--orange)','⏳')}</div></div></div>
+      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme eşiği aştı — bu bölgeyi dinlendir.</div>`:''}</div>`;}
+  openSheet(`<div class="title-lg">🔗 Tendonlar / bağ — detay</div>
+    <div class="muted small" style="margin:8px 0 12px">Her tendon/bağ bölgesi ayrı ayrı: uyaran, birikmiş iyileşme yükü ve eşiği. Özet kart bunların ortalamasını gösterir. Ağrı derecesini Durum sekmesinden değiştirirsin.</div>
+    ${rows}`);
+}
+function renderBalanceAnaliz(){
   const W=S.cfg.window,ml=muscleLoad(W),sl=systemLoad(W);
   const maxM=Math.max(1,...Object.values(ml)),maxS=Math.max(1,...Object.values(sl));
   const regions=[];for(const m of M_ORDER)if(!regions.includes(MINFO[m].region))regions.push(MINFO[m].region);
@@ -678,21 +782,44 @@ function renderBalance(){
   const rr=S.cfg.balanceRatio;
   for(const p of pairs){const a=patternSets(p[1],W),b=patternSets(p[3],W);const low=a>0&&b<a*rr?p[2]:(b>0&&a<b*rr?p[0]:null);
     h+=noteBox(`${p[0]} ${a} set · ${p[2]} ${b} set${low?'  →  '+low+' geride':''}`,{color:low?'var(--orange)':'var(--green)',icon:low?'⚖️':'✓'});}
-  h+=sec('Sistemler',`Uyaran (son ${W} gün) ve toparlanma durumu`);
-  for(const s of S_ORDER){const st=status(sl[s]);const rl=recLeft(s);
+  h+=sec('Sistemler',`Uyaran (son ${W} gün) · birikmiş iyileşme yükü ve toparlanma`);
+  let tendonDone=false;
+  for(const s of S_ORDER){
+    if(TENDONS.includes(s)){
+      if(tendonDone)continue;tendonDone=true;
+      const slA=TENDONS.reduce((a,t)=>a+sl[t],0)/TENDONS.length;
+      const recA=TENDONS.reduce((a,t)=>a+sysRecovery(t),0)/TENDONS.length;
+      const thrA=TENDONS.reduce((a,t)=>a+sysThreshold(t),0)/TENDONS.length;
+      const st=status(slA);let top=TENDONS[0];for(const t of TENDONS)if(sysRecovery(t)>sysRecovery(top))top=t;
+      const topRec=sysRecovery(top),topThr=sysThreshold(top),topOver=topRec>topThr;
+      const rtag=recA<1?tag('Hazır','var(--green)'):topOver?tag('~'+Math.round(recA)+' sa · detayda aşım','var(--red)','🔴'):tag('~'+Math.round(recA)+' sa','var(--orange)','⏳');
+      h+=`<div class="card tight" data-act="tendondetail" style="cursor:pointer"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:22px">🔗</div>
+        <div style="flex:1"><div style="font-weight:600">Tendonlar / bağ <span class="muted tiny">(5 bölge ortalaması)</span></div><div class="muted tiny">Dirsek · itme · diz · Aşil · kalça · eşik ${Math.round(thrA)} sa</div>
+          <div style="margin-top:6px">${barHtml(thrA?recA/thrA:0,{color:topOver?'var(--red)':'#26a69a',cls:'md',bg:'var(--surfhi)'})}</div></div>
+        <div style="text-align:right;min-width:76px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(slA)} · ${st.t}</div>
+          <div style="margin-top:4px;display:flex;justify-content:flex-end">${rtag}</div></div>
+        <div style="font-size:18px;color:var(--onvar);margin-left:2px">›</div></div>
+        <div class="muted small" style="margin-top:8px;color:${topOver?'var(--red)':'var(--onvar)'}">${topOver?'⚠ ':''}Detayda en yüksek: ${esc(SINFO[top].label)} — ${Math.round(topRec)} sa${topOver?` (eşik ${Math.round(topThr)} sa aşıldı)`:''}. Tıkla → 5 bölgeyi ayrı gör.</div></div>`;
+      continue;
+    }
+    const st=status(sl[s]);const rec=sysRecovery(s),thr=sysThreshold(s);
+    const over=rec>thr;const rtag=rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa','var(--orange)','⏳');
     h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:22px">${SINFO[s].icon}</div>
-      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)} · ${recHours(s)} sa</div>
-        <div style="margin-top:6px">${barHtml(sl[s]/maxS,{color:SINFO[s].color,cls:'md',bg:'var(--surfhi)'})}</div></div>
-      <div style="text-align:right;min-width:70px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(sl[s])} · ${st.t}</div>
-        <div style="margin-top:4px;display:flex;justify-content:flex-end">${rl<1?tag('Hazır','var(--green)'):tag('~'+Math.round(rl)+' sa','var(--orange)','⏳')}</div></div></div></div>`;}
+      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)} · eşik ${Math.round(thr)} sa</div>
+        <div style="margin-top:6px">${barHtml(thr?rec/thr:0,{color:over?'var(--red)':SINFO[s].color,cls:'md',bg:'var(--surfhi)'})}</div></div>
+      <div style="text-align:right;min-width:76px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(sl[s])} · ${st.t}</div>
+        <div style="margin-top:4px;display:flex;justify-content:flex-end">${rtag}</div></div></div>
+      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme (${Math.round(rec)} sa) eşiği (${Math.round(thr)} sa) aştı — bu sistemi bugün dinlendir.</div>`:''}</div>`;}
   h+=sec('Bugün için öneri');
-  const ready=S_ORDER.filter(s=>recLeft(s)<1).sort((a,b)=>sl[a]-sl[b]);
-  const focus=ready.filter(s=>sl[s]<S.cfg.lowBelow).slice(0,2);
-  if(focus.length===0)h+=noteBox('Hazır olan sistemlerin hepsi haftalık uyaranda yeterli görünüyor. Planı takip et.',{color:'var(--green)',icon:'✓'});
-  else h+=noteBox(`${focus.map(s=>SINFO[s].label).join(' ve ')} toparlanmış ve haftalık uyaranı düşük. Bugün bunlara ağırlık verebilirsin.`,{icon:'💡'});
+  const ready=S_ORDER.filter(s=>sysRecovery(s)<sysThreshold(s)).sort((a,b)=>sl[a]-sl[b]);
+  const focus=ready.filter(s=>sl[s]<S.cfg.lowBelow&&sysRecovery(s)<1).slice(0,2);
+  const over=S_ORDER.filter(s=>sysRecovery(s)>sysThreshold(s));
+  if(over.length)h+=noteBox(`${over.map(s=>SINFO[s].label).join(', ')} eşiği aştı — bu sistem(ler)i bugün dinlendir.`,{color:'var(--red)',icon:'🔴'});
+  if(focus.length===0)h+=noteBox('Tam toparlanmış ve haftalık uyaranı düşük sistem yok. Planı takip et.',{color:'var(--green)',icon:'✓'});
+  else h+=noteBox(`${focus.map(s=>SINFO[s].label).join(' ve ')} tam toparlanmış ve haftalık uyaranı düşük. Bugün bunlara ağırlık verebilirsin.`,{icon:'💡'});
   const cands=S.all().filter(e=>!S.active.has(e.id)&&(e.block!==null||e.custom)).sort((a,b)=>gapScore(b,ml,sl)-gapScore(a,ml,sl));
   if(cands.length&&gapScore(cands[0],ml,sl)>0)h+=noteBox(`Boşluğu en çok kapatacak aday: ${cands.slice(0,2).map(e=>e.name).join(', ')}. Detay Program sekmesinde.`,{icon:'🧭'});
-  h+=`<div class="muted" style="font-size:12px;line-height:1.45;margin-top:6px">Eşikler: ${fmt(S.cfg.openBelow)} altı açıkta, ${fmt(S.cfg.lowBelow)} altı düşük. Bu değerler ve toparlanma saatleri Ayarlar → Analiz ve kurallar'dan değiştirilebilir. Tahmindir, kendi hissinle birlikte oku.</div>`;
+  h+=`<div class="muted" style="font-size:12px;line-height:1.45;margin-top:6px">Birikmiş iyileşme: her egzersizin kendi iyileşme süresinden (editörde ayarlanır; boşsa sistemlerinden türetilir) gelen kalan süreler, egzersiz-gün başına bir kez toplanır ve RPE ile ölçeklenir. Bir sistemin toplamı eşiğini (${'{'}sistem saati × çarpan${'}'}) aşınca aşırı yüklenme uyarısı çıkar. Eşikler, saatler, RPE çarpanları ve aşırı-yüklenme çarpanı Ayarlar → Analiz ve kurallar'dan değiştirilebilir. Tahmindir, kendi hissinle oku.</div>`;
   return h;
 }
 
@@ -770,6 +897,7 @@ function renderCalendar(){
     const planned=plannedSets(date),done=doneSetsOn(date),isToday=sameDay(date,today);
     const ch=schedChangesOn(date),hasAdd=ch.some(c=>c.op==='add'),hasRem=ch.some(c=>c.op==='remove');
     const hasExtra=oneoffIds(dayKey(date)).length>0;
+    const pd=painDay(date);
     const fresh=ch.some(c=>daysSince(c.t)<=3);
     const bg=ph!==null?`background:color-mix(in srgb,${PHASE[ph].c} 16%,transparent);box-shadow:inset 3px 0 0 ${PHASE[ph].c};`:'';
     const fill=planned>0?Math.min(1,done/planned):(done>0?1:0);
@@ -780,14 +908,17 @@ function renderCalendar(){
       ${(planned>0||done>0)?`<div class="dot"><i style="width:${fill*100}%"></i></div>`:''}
       ${hasExtra?'<span class="mk extra"></span>':''}
       ${hasAdd?`<span class="mk add${fresh?' fresh':''}"></span>`:''}
-      ${hasRem?`<span class="mk rem${fresh?' fresh':''}"></span>`:''}</div>`;
+      ${hasRem?`<span class="mk rem${fresh?' fresh':''}"></span>`:''}
+      ${pd.skip?`<span class="mk pain" style="background:var(--red);color:var(--red)"></span>`:pd.half?`<span class="mk pain" style="background:${PAIN_AMBER};color:${PAIN_AMBER}"></span>`:''}</div>`;
   }
   h+=`</div>`;
   h+=`<div class="card tight" style="margin-top:12px"><div class="subhdr" style="padding-top:0">Renkler ve işaretler</div>
     <div class="lgd">${PHASE.map(p=>`<span><span class="sw" style="background:color-mix(in srgb,${p.c} 55%,transparent)"></span>${p.t}</span>`).join('')}</div>
-    <div class="lgd" style="margin-top:8px"><span><span class="d" style="background:var(--green)"></span>eklendi</span><span><span class="d" style="background:var(--red)"></span>çıkarıldı</span><span><span class="d" style="background:#8e6cf0"></span>ekstra (bugüne özel)</span><span>✓ tamamlandı</span></div></div>`;
+    <div class="lgd" style="margin-top:8px"><span><span class="d" style="background:var(--green)"></span>eklendi</span><span><span class="d" style="background:var(--red)"></span>çıkarıldı</span><span><span class="d" style="background:#8e6cf0"></span>ekstra</span><span><span class="d" style="background:${PAIN_AMBER}"></span>ağrı: yarım</span><span><span class="d" style="background:var(--red)"></span>ağrı: atlandı</span></div></div>`;
   return h;
 }
+function painDay(date){let half=false,skip=false;for(const e of plannedOn(date)){const m=painStatus(e,date).mode;if(m==='skip')skip=true;else if(m==='half')half=true;}
+  for(const a of S.painAction)if(a.d===dayKey(date)){if(a.mode==='skip')skip=true;else if(a.mode==='half')half=true;}return {half,skip};}
 function openDay(key){
   const date=new Date(key+'T12:00:00'),ph=phaseOf(date),wd=weekday(date);
   const planned=plannedOn(date),dmap=doneMap(date),ch=schedChangesOn(date);
@@ -796,8 +927,9 @@ function openDay(key){
   const dayLogs=S.logs.filter(l=>sameDay(dt(l),date));
   const avg=dayLogs.length?(dayLogs.reduce((a,l)=>a+l.r,0)/dayLogs.length).toFixed(1):null;
   let rows='';
-  for(const e of planned){const t=target(e,date),got=dmap[e.id]||0,ok=got>=t.sets;
-    rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
+  for(const e of planned){const t=target(e,date),got=dmap[e.id]||0,ok=got>=t.sets,ps=painStatus(e,date);
+    const pl=ps.mode==='skip'?`<span class="badge" style="background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red)">ağrı: atlandı</span>`:ps.mode==='half'?`<span class="badge" style="background:color-mix(in srgb,${PAIN_AMBER} 22%,transparent);color:${PAIN_AMBER}">ağrı: yarım</span>`:'';
+    rows+=`<div class="row"><div style="flex:1">${esc(e.name)} ${pl} <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
   for(const e of offs){const t=oneoffTarget(e,date),got=dmap[e.id]||0,ok=got>=t.sets;
     rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="badge" style="background:color-mix(in srgb,#8e6cf0 20%,transparent);color:#8e6cf0">ekstra</span> <span class="muted tiny">${got}/${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div><div style="color:${ok?'var(--green)':got>0?'var(--orange)':'var(--onvar)'};font-weight:700">${ok?'✓':got>0?'◑':'○'}</div></div>`;}
   for(const id of doneExtra){const e=S.ex(id);if(!e)continue;rows+=`<div class="row"><div style="flex:1">${esc(e.name)} <span class="muted tiny">${dmap[id]} set · plan dışı</span></div><div style="color:var(--primary)">＋</div></div>`;}
@@ -806,6 +938,10 @@ function openDay(key){
   const nm=id=>S.ex(id)?S.ex(id).name:'—';
   if(adds.length)chTxt+=noteBox('Bu gün programa eklendi: '+[...new Set(adds.map(c=>nm(c.e)))].join(', '),{color:'var(--green)',icon:'＋'});
   if(rems.length)chTxt+=noteBox('Bu gün programdan çıkarıldı: '+[...new Set(rems.map(c=>nm(c.e)))].join(', '),{color:'var(--red)',icon:'－'});
+  const painActs=S.painAction.filter(a=>a.d===key);
+  if(painActs.length)chTxt+=noteBox('Elle ağrı ayarı: '+painActs.map(a=>`${nm(a.e)} (${a.mode==='skip'?'atla':a.mode==='half'?'yarım':'normal'})`).join(', '),{color:PAIN_AMBER,icon:'🩹'});
+  const painState=PAIN_AREAS.filter(a=>painAt(a.sys,date)>0).map(a=>`${a.label}: ${PAIN_LVL[painAt(a.sys,date)].t}`);
+  if(painState.length)chTxt+=noteBox('O günkü ağrı durumu — '+painState.join(' · '),{color:PAIN_AMBER,icon:'🩹'});
   openSheet(`<div class="dsheet"><div style="display:flex;align-items:center;gap:8px">
      <div class="title-lg" style="flex:1">${date.getDate()} ${kMonths[date.getMonth()]}, ${kDayNames[wd-1]}</div>
      ${ph!==null?`<span class="dpill" style="background:color-mix(in srgb,${PHASE[ph].c} 20%,transparent);color:${PHASE[ph].c}">${PHASE[ph].t}</span>`:'<span class="dpill" style="background:var(--surfhi);color:var(--onvar)">program öncesi</span>'}</div>
@@ -1169,6 +1305,8 @@ function openEditor(id){
     <input type="range" min="1" max="10" step="1" value="${st.rpe}" id="erpe">
     <div style="height:10px"></div><label class="fld">Tempo (sn, opsiyonel) — ör. 3-1-1-0 (iniş-bekle-çıkış-bekle). Tekrar birimli egzersizlerde 🎵 metronom açar.</label>
     <input type="text" id="etempo" inputmode="numeric" value="${base?esc(base.tempo||''):''}" placeholder="3-1-1-0">
+    <div style="height:10px"></div><label class="fld">İyileşme süresi (saat, opsiyonel) — boş bırakırsan ana sistemlerinin en uzunundan türetilir</label>
+    <input type="number" id="erecovery" inputmode="decimal" value="${base?esc(base.recovery||''):''}" placeholder="${base?exRecovery(base):48}">
     <div style="height:8px"></div><label class="fld">Not (opsiyonel)</label><textarea id="enote">${base?esc(base.note):''}</textarea>
     <div class="errmsg" id="eerr" style="display:none"></div>
     <div style="height:12px"></div><button class="fill block" id="esave">${id?'Kaydet':'Programa ekle'}</button>
@@ -1217,7 +1355,8 @@ function openEditor(id){
     const def={name,pattern:overlay.querySelector('#epat').value.trim()||'Özel',unit:st.unit,days:[...st.days].sort((a,b)=>a-b),
       rpe:st.rpe,impact:overlay.querySelector('#eimp').checked,halfRec:overlay.querySelector('#ehalf').checked,
       step:isNaN(num('#estep'))?0:num('#estep'),muscles,systems,targets,note:overlay.querySelector('#enote').value.trim(),
-      tempo:(overlay.querySelector('#etempo').value||'').replace(/[^0-9-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'')};
+      tempo:(overlay.querySelector('#etempo').value||'').replace(/[^0-9-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,''),
+      recovery:(function(){const rv=parseFloat((overlay.querySelector('#erecovery').value||'').replace(',','.'));return isNaN(rv)||rv<=0?'':rv;})()};
     saveExercise(id,def);closeOverlay();};
   const rb=overlay.querySelector('#ereset');if(rb)rb.onclick=()=>{resetExercise(id);closeOverlay();};
   const db=overlay.querySelector('#edel');if(db)db.onclick=()=>{if(confirm('Bu özel egzersiz silinsin mi?')){removeCustom(id);closeOverlay();}};
@@ -1275,7 +1414,9 @@ function openConfig(){
   const dayChips=[1,2,3,4,5,6,7].map(d=>`<button type="button" class="chip ${c.halfDays.includes(d)?'sel':''}" data-hd="${d}">${kDayShort[d-1]}</button>`).join('');
   openSheet(`<div style="display:flex;align-items:center;gap:8px"><div class="title-lg" style="flex:1">🎛️ Analiz ve kurallar</div><button class="text" id="cfgreset">Varsayılan</button></div>
    <div class="muted small" style="margin:6px 0 2px">Öneri, denge ve toparlanma hesaplarının tamamı bu değerlere göre çalışır. Değişiklikler anında uygulanır ve buluta eşitlenir.</div>
-   ${sec('Toparlanma süreleri (saat)','Bir sistemin ana uyaran sonrası kabaca kaç saatte toparlandığı')}${sys}
+   ${sec('Toparlanma süreleri (saat)','Sistemin toparlanma tabanı ve aşırı-yüklenme eşiği. Her egzersizin kendi iyileşme süresi editörde ayarlanır; boşsa sistemlerinden türetilir.')}${sys}
+   ${num('Aşırı yüklenme eşiği çarpanı (eşik = sistem saati × çarpan)','cf_overloadMult',c.overloadMult,0.1)}
+   ${num('Set başına ek katkı (aynı hareket, her ekstra set için +oran)','cf_setStrain',c.setStrain,0.05)}
    ${sec('Yük eşikleri (haftalık ağırlıklı set)')}
    ${num('“Açıkta”: bu değerin altı','cf_openBelow',c.openBelow,0.5)}
    ${num('“Düşük”: bu değerin altı','cf_lowBelow',c.lowBelow,1)}
@@ -1299,8 +1440,14 @@ function openConfig(){
    ${num('GtG eşiği: RPE bu ve altı sık yayılabilir','cf_gtgRpe',c.gtgRpe,1)}
    <div style="font-size:12.5px;color:var(--onvar);margin:10px 2px 4px">Yarım hacim günleri — “Çar/Paz yarım hacim” açık egzersizlerde set yarıya iner</div>
    <div class="chipwrap" id="cf_halfDays">${dayChips}</div>
+   ${sec('Ağrı / durum','Ağrı derecesi (1 hafif, 2 orta, 3 şiddetli) hangi aksiyona yol açar ve toparlanmaya kaç saat ekler')}
+   ${num('Yarım yük eşiği (bu derece ve üstü)','cf_painHalfLevel',c.painHalfLevel,1)}
+   ${num('Pasif (atla) eşiği (bu derece ve üstü)','cf_painSkipLevel',c.painSkipLevel,1)}
+   ${num('Hafif (1) → toparlanmaya + saat','cf_painStrain1',c.painStrain[1],6)}
+   ${num('Orta (2) → toparlanmaya + saat','cf_painStrain2',c.painStrain[2],6)}
+   ${num('Şiddetli (3) → toparlanmaya + saat','cf_painStrain3',c.painStrain[3],6)}
    <div style="height:16px"></div>`);
-  const nmap={cf_openBelow:'openBelow',cf_lowBelow:'lowBelow',cf_window:'window',cf_gapOpen:'gapOpen',cf_gapLow:'gapLow',cf_balanceRatio:'balanceRatio',cf_impactFactor:'impactFactor',cf_lookbackHours:'lookbackHours',cf_spaceMinHours:'spaceMinHours',cf_gtgRpe:'gtgRpe',cf_rpe_f8:'rpe.f8',cf_rpe_f7:'rpe.f7',cf_rpe_f6:'rpe.f6',cf_rpe_f5:'rpe.f5',cf_rpe_f0:'rpe.f0'};
+  const nmap={cf_openBelow:'openBelow',cf_lowBelow:'lowBelow',cf_window:'window',cf_gapOpen:'gapOpen',cf_gapLow:'gapLow',cf_balanceRatio:'balanceRatio',cf_impactFactor:'impactFactor',cf_lookbackHours:'lookbackHours',cf_overloadMult:'overloadMult',cf_setStrain:'setStrain',cf_spaceMinHours:'spaceMinHours',cf_gtgRpe:'gtgRpe',cf_painHalfLevel:'painHalfLevel',cf_painSkipLevel:'painSkipLevel',cf_painStrain1:'painStrain.1',cf_painStrain2:'painStrain.2',cf_painStrain3:'painStrain.3',cf_rpe_f8:'rpe.f8',cf_rpe_f7:'rpe.f7',cf_rpe_f6:'rpe.f6',cf_rpe_f5:'rpe.f5',cf_rpe_f0:'rpe.f0'};
   for(const id in nmap){const el=overlay.querySelector('#'+id);if(el)el.onchange=()=>{const v=parseFloat((el.value||'').replace(',','.'));if(!isNaN(v))setCfg(nmap[id],v);};}
   for(const s of S_ORDER){const el=overlay.querySelector('#cf_rec_'+s);if(el)el.onchange=()=>{const v=parseFloat(el.value);if(!isNaN(v)&&v>0)setCfg('recovery.'+s,v);};}
   const ga=overlay.querySelector('#cf_gapAux');if(ga)ga.onchange=()=>{S.cfg.gapAux=ga.checked;changed();};
@@ -1390,6 +1537,11 @@ document.body.addEventListener('click',ev=>{
     case 'metro':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));openMetro(e,t.v);break;}
     case 'spread':spreadOn=!spreadOn;render();break;
     case 'addoneoff':openOneoffPicker();break;
+    case 'painmenu':openPainMenu(S.ex(id));break;
+    case 'setpain':setPainAction(id,el.dataset.mode);closeOverlay();break;
+    case 'balmode':balMode=+el.dataset.v;render();break;
+    case 'tendondetail':openTendonDetail();break;
+    case 'setpainlvl':setPain(el.dataset.sys,+el.dataset.lvl);break;
     case 'rmoneoff':removeOneoff(id,dayKey(dOnly(new Date())));break;
     case 'pickoneoff':addOneoff(id,dayKey(dOnly(new Date())));openOneoffPicker();break;
     case 'log':{const e=S.ex(id),t=target(e,dOnly(new Date()))||oneoffTarget(e,dOnly(new Date()));openLog(e,t.v);break;}
