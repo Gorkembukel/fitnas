@@ -34,7 +34,8 @@ const SCENARIOS = [
   ['Boş (ilk açılış)', {}],
   ['Gerçekçi veri (log + ağrı + ayar)', { antrenman_takip_v2: JSON.stringify({
     start: new Date(now - 40 * 24 * H).toISOString(), active: ['push', 'squat', 'wallsit', 'chin', 'run', 'rope', 'row1', 'deadbug'],
-    logs: realisticLogs(), metrics: [{ k: 'Kilo (kg)', v: 80, t: now - 5 * 24 * H }], signals: {}, overrides: {}, maxes: [],
+    logs: realisticLogs(), metrics: [{ k: 'Kilo (kg)', v: 80, t: now - 5 * 24 * H }], signals: {}, overrides: {},
+    maxes: [{ e: 'push', v: 15, t: now - 10 * 24 * H, recH: 60 }, { e: 'squat', v: 20, t: now - 2 * 24 * H }],
     testInterval: 28, schedLog: [], oneoff: [], pain: { tendonKol: 2, tendonDiz: 3 },
     painLog: [{ s: 'tendonKol', level: 2, t: now - 2 * H }, { s: 'tendonDiz', level: 3, t: now - H }], painAction: [],
     cfg: { overloadMult: 1.2 }, custom: [] }) }],
@@ -67,6 +68,7 @@ if (argIdx > 0) {
   const { sysRecovery, sysThreshold } = await imp('mantik/toparlanma.js');
   const { target } = await imp('mantik/program.js');
   const { painStatus } = await imp('mantik/agri.js');
+  const { pendingCalib, calibSuggest } = await imp('mantik/rekor.js');
   const { PAGES, TABS, render } = await imp('ui/render.js');
   const { U } = await imp('ui/durum-ui.js');
 
@@ -101,6 +103,16 @@ if (argIdx > 0) {
     for (const id of S.active) { const e = S.ex(id); if (!e) continue;
       const tg = target(e, d); if (tg && [tg.sets, tg.v].some(x => !Number.isFinite(x))) throw new Error(`${id}: target=${JSON.stringify(tg)}`);
       const ps = painStatus(e, d); if (!ps || !['normal', 'half', 'skip', 'flag'].includes(ps.mode)) throw new Error(`${id}: painStatus=${JSON.stringify(ps)}`);
+    }
+  });
+  check('pendingCalib / calibSuggest', () => {
+    for (const m of pendingCalib()) if (m.recH != null) throw new Error('recH dolu olan pending listede: ' + m.e);
+    const withRecH = S.maxes.find(m => m.recH != null);
+    if (withRecH) {
+      const e = S.ex(withRecH.e); if (!e) throw new Error('egzersiz bulunamadı: ' + withRecH.e);
+      const sug = calibSuggest(e, withRecH.recH);
+      if (!sug.length) throw new Error('calibSuggest boş döndü');
+      for (const r of sug) if (!Number.isFinite(r.suggest) || r.suggest <= 0) throw new Error(`${r.s}: suggest=${r.suggest}`);
     }
   });
   if (label.startsWith('Eski taksonomi')) check('v2 migrasyonu: kas/tendon anahtarları kalmadı', () => {

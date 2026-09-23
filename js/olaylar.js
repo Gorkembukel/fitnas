@@ -1,12 +1,12 @@
 // Olay delegasyonu: data-act / data-nav tıklamaları.
 import {S} from './durum.js';
-import {addDay,addLog,addOneoff,removeCustom,removeDay,removeOneoff,resetExercise,resetToday,setPain,setPainAction,toggleActive,toggleSignal,undoLast} from './eylemler.js';
+import {addDay,addLog,addOneoff,removeCustom,removeDay,removeOneoff,resetExercise,resetToday,setCfg,setPain,setPainAction,toggleActive,toggleSignal,undoLast} from './eylemler.js';
 import {oneoffTarget,target} from './mantik/program.js';
 import {openLog,openPainMenu} from './sayfalar/bugun.js';
 import {openGroupDetail} from './sayfalar/denge.js';
 import {openDay,openMetric} from './sayfalar/ozet.js';
 import {openDayPicker,openOneoffPicker} from './sayfalar/program.js';
-import {openInterval,openMax} from './sayfalar/rekor.js';
+import {openCalibInput,openInterval,openMax} from './sayfalar/rekor.js';
 import {openSettings} from './ui/ayarlar.js';
 import {U} from './ui/durum-ui.js';
 import {openEditor} from './ui/editor.js';
@@ -48,6 +48,8 @@ document.body.addEventListener('click',ev=>{
     case 'addmax':openMax(null);break;
     case 'retest':openMax(id);break;
     case 'interval':openInterval();break;
+    case 'calibopen':openCalibInput(id,+el.dataset.t);break;
+    case 'calibapply':setCfg('recovery.'+el.dataset.s,+el.dataset.v);closeOverlay();showToast('Toparlanma süresi güncellendi');break;
     case 'libmode':U.libMode=+el.dataset.v;render();break;
     case 'addday':openDayPicker(+el.dataset.d);break;
     case 'rmday':removeDay(id,+el.dataset.d);break;
