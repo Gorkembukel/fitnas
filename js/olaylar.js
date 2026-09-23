@@ -6,7 +6,7 @@ import {openLog,openPainMenu} from './sayfalar/bugun.js';
 import {openGroupDetail} from './sayfalar/denge.js';
 import {openDay,openMetric} from './sayfalar/ozet.js';
 import {openDayPicker,openOneoffPicker} from './sayfalar/program.js';
-import {openCalibInput,openInterval,openMax} from './sayfalar/rekor.js';
+import {openCalibInput,openCalibSuggest,openInterval,openMax} from './sayfalar/rekor.js';
 import {openSettings} from './ui/ayarlar.js';
 import {U} from './ui/durum-ui.js';
 import {openEditor} from './ui/editor.js';
@@ -49,7 +49,11 @@ document.body.addEventListener('click',ev=>{
     case 'retest':openMax(id);break;
     case 'interval':openInterval();break;
     case 'calibopen':openCalibInput(id,+el.dataset.t);break;
-    case 'calibapply':setCfg('recovery.'+el.dataset.s,+el.dataset.v);closeOverlay();showToast('Toparlanma süresi güncellendi');break;
+    case 'calibsuggest':openCalibSuggest(id,+el.dataset.t);break;
+    case 'calibapply':{setCfg('recovery.'+el.dataset.s,+el.dataset.v);
+      const row=el.closest('.card');if(row){const info=row.querySelector('.muted.tiny');if(info)info.textContent=`şu an ${el.dataset.v} sa · uygulandı`;}
+      el.textContent='✓ Uygulandı';el.disabled=true;
+      showToast('Toparlanma süresi güncellendi');break;}
     case 'libmode':U.libMode=+el.dataset.v;render();break;
     case 'addday':openDayPicker(+el.dataset.d);break;
     case 'rmday':removeDay(id,+el.dataset.d);break;

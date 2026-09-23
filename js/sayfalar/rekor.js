@@ -40,7 +40,9 @@ export function maxCard(e,isDue){
       ${d!==null?`<div style="color:${d>=0?'var(--green)':'var(--red)'};font-size:13px;padding-bottom:6px;font-weight:600">${d>=0?'▲':'▼'} ${fmt(Math.abs(d))}</div>`:''}
       <div class="spacer"></div><div class="mini">${mini}</div></div>
     <div class="muted small" style="margin-top:6px">Son test: ${dm(new Date(last.t))} · ${since} gün önce · ${hist.length} kayıt</div>
-    <div style="text-align:right;margin-top:8px"><button class="${isDue?'fill':'out'}" data-act="retest" data-id="${e.id}">Yeniden test et</button></div></div>`;
+    <div style="text-align:right;margin-top:8px;display:flex;justify-content:flex-end;gap:8px">
+      ${last.recH!=null?`<button class="text" data-act="calibsuggest" data-id="${e.id}" data-t="${last.t}">Kalibrasyon (${fmt(last.recH)} sa)</button>`:''}
+      <button class="${isDue?'fill':'out'}" data-act="retest" data-id="${e.id}">Yeniden test et</button></div></div>`;
 }
 /* ── max sheet ── */
 export function openMax(fixedId){
