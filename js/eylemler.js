@@ -33,7 +33,6 @@ export function saveExercise(id,def){
 }
 export function resetExercise(id){delete S.overrides[id];S.schedLog=S.schedLog.filter(z=>z.e!==id);S.reindex();changed();}
 export function addMax(id,v,t){S.maxes.push({e:id,v,t:t??Date.now()});changed();}
-export function setMaxRecovery(id,t,h){const m=S.maxes.find(x=>x.e===id&&x.t===t);if(!m)return;m.recH=h;changed();}
 export function setPain(s,lvl){lvl=Math.max(0,Math.min(3,lvl|0));if((S.pain[s]||0)===lvl)return;S.pain[s]=lvl;S.painLog.push({s,level:lvl,t:Date.now()});changed();}
 export function setPainAction(id,mode){const key=dayKey(dOnly(new Date()));S.painAction=S.painAction.filter(x=>!(x.e===id&&x.d===key));if(mode&&mode!=='clear')S.painAction.push({e:id,d:key,mode});changed();}
 export function addOneoff(id,key){if(!S.oneoff.some(o=>o.e===id&&o.d===key))S.oneoff.push({e:id,d:key});changed();}

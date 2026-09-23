@@ -81,8 +81,6 @@ export function openConfig(){
    ${num('RPE 4 ve altı çarpanı','cf_rpe_f0',c.rpe.f0,0.05)}
    ${num('Darbe min çarpanı (tendon/kemik/reaktif)','cf_impactFactor',c.impactFactor,0.05)}
    ${num('Geriye bakış penceresi (saat)','cf_lookbackHours',c.lookbackHours,12)}
-   ${sec('Max test kalibrasyonu','Rekor sekmesinde bir max testten sonra girdiğin gerçek toparlanma süresi, yukarıdaki sistem sürelerine öneri üretmek için kullanılır')}
-   ${num('Yardımcı sistem payı (ağırlık<1 ise önerilen süre × bu oran)','cf_calibAuxShare',c.calibAuxShare,0.05)}
    ${sec('Diğer')}
    ${num('Ardışık gün uyarısı eşiği (saat)','cf_spaceMinHours',c.spaceMinHours,6)}
    ${num('GtG eşiği: RPE bu ve altı sık yayılabilir','cf_gtgRpe',c.gtgRpe,1)}
@@ -95,7 +93,7 @@ export function openConfig(){
    ${num('Orta (2) → toparlanmaya + saat','cf_painStrain2',c.painStrain[2],6)}
    ${num('Şiddetli (3) → toparlanmaya + saat','cf_painStrain3',c.painStrain[3],6)}
    <div style="height:16px"></div>`);
-  const nmap={cf_openBelow:'openBelow',cf_lowBelow:'lowBelow',cf_window:'window',cf_gapOpen:'gapOpen',cf_gapLow:'gapLow',cf_balanceRatio:'balanceRatio',cf_impactFactor:'impactFactor',cf_lookbackHours:'lookbackHours',cf_overloadMult:'overloadMult',cf_setContrib:'setContrib',cf_spaceMinHours:'spaceMinHours',cf_gtgRpe:'gtgRpe',cf_painHalfLevel:'painHalfLevel',cf_painSkipLevel:'painSkipLevel',cf_painStrain1:'painStrain.1',cf_painStrain2:'painStrain.2',cf_painStrain3:'painStrain.3',cf_rpe_f8:'rpe.f8',cf_rpe_f7:'rpe.f7',cf_rpe_f6:'rpe.f6',cf_rpe_f5:'rpe.f5',cf_rpe_f0:'rpe.f0',cf_calibAuxShare:'calibAuxShare'};
+  const nmap={cf_openBelow:'openBelow',cf_lowBelow:'lowBelow',cf_window:'window',cf_gapOpen:'gapOpen',cf_gapLow:'gapLow',cf_balanceRatio:'balanceRatio',cf_impactFactor:'impactFactor',cf_lookbackHours:'lookbackHours',cf_overloadMult:'overloadMult',cf_setContrib:'setContrib',cf_spaceMinHours:'spaceMinHours',cf_gtgRpe:'gtgRpe',cf_painHalfLevel:'painHalfLevel',cf_painSkipLevel:'painSkipLevel',cf_painStrain1:'painStrain.1',cf_painStrain2:'painStrain.2',cf_painStrain3:'painStrain.3',cf_rpe_f8:'rpe.f8',cf_rpe_f7:'rpe.f7',cf_rpe_f6:'rpe.f6',cf_rpe_f5:'rpe.f5',cf_rpe_f0:'rpe.f0'};
   for(const id in nmap){const el=overlay.querySelector('#'+id);if(el)el.onchange=()=>{const v=parseFloat((el.value||'').replace(',','.'));if(!isNaN(v))setCfg(nmap[id],v);};}
   for(const s of S_ORDER){const el=overlay.querySelector('#cf_rec_'+s);if(el)el.onchange=()=>{const v=parseFloat(el.value);if(!isNaN(v)&&v>0)setCfg('recovery.'+s,v);};}
   const ga=overlay.querySelector('#cf_gapAux');if(ga)ga.onchange=()=>{S.cfg.gapAux=ga.checked;changed();};

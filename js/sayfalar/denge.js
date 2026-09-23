@@ -38,11 +38,11 @@ export function openGroupDetail(gi){
     rows+=`<div class="card tight" style="margin-bottom:8px${over?';box-shadow:inset 4px 0 0 var(--red)':''}">
       <div style="display:flex;align-items:center;gap:10px"><div style="font-size:20px">${G.icon}</div>
         <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div>
-          <div class="muted tiny">aşırı yük sınırı ${Math.round(thr)} sa${pl>0?` · ağrı: ${PAIN_LVL[pl].t}`:''}</div>
+          <div class="muted tiny">eşik ${Math.round(thr)} sa${pl>0?` · ağrı: ${PAIN_LVL[pl].t}`:''}</div>
           <div style="margin-top:6px">${barHtml(thr?rec/thr:0,{color:over?'var(--red)':G.color,cls:'md',bg:'var(--surfhi)'})}</div></div>
         <div style="text-align:right;min-width:74px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(slv)} · ${st.t}</div>
-          <div style="margin-top:4px;display:flex;justify-content:flex-end">${rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa yük · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa yük','var(--orange)','⏳')}</div></div></div>
-      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme, aşırı yük sınırını aştı — bu bölgeyi dinlendir.</div>`:''}</div>`;}
+          <div style="margin-top:4px;display:flex;justify-content:flex-end">${rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa','var(--orange)','⏳')}</div></div></div>
+      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme eşiği aştı — bu bölgeyi dinlendir.</div>`:''}</div>`;}
   openSheet(`<div class="title-lg">${G.icon} ${esc(G.label)} — detay</div>
     <div class="muted small" style="margin:8px 0 12px">Her bölge ayrı ayrı: uyaran, birikmiş iyileşme yükü ve eşiği. Özet kart bunların ortalamasını gösterir.</div>
     ${rows}`);
@@ -61,7 +61,6 @@ export function renderBalanceAnaliz(){
   for(const p of pairs){const a=patternSets(p[1],W),b=patternSets(p[3],W);const low=a>0&&b<a*rr?p[2]:(b>0&&a<b*rr?p[0]:null);
     h+=noteBox(`${p[0]} ${a} set · ${p[2]} ${b} set${low?'  →  '+low+' geride':''}`,{color:low?'var(--orange)':'var(--green)',icon:low?'⚖️':'✓'});}
   h+=sec('Sistemler',`Uyaran (son ${W} gün) · birikmiş iyileşme yükü ve toparlanma`);
-  h+=noteBox('Buradaki saat sabit bir geri sayım değil: birikmiş iyileşme yükü yaptığın set sayısı ve RPE’ye göre büyür, zamanla azalır. “Aşırı yük sınırı” süresi dolunca otomatik toparlanmış olmazsın — o sistemi yükleyen her yeni set, ne kadar geçerse geçsin yükü tekrar artırır.',{icon:'ℹ️'});
   const doneGroup={};
   for(const s of S_ORDER){
     const gi=SYS_GROUPS.findIndex(g=>g.members.includes(s));
@@ -72,24 +71,24 @@ export function renderBalanceAnaliz(){
       const thrA=mem.reduce((a,t)=>a+sysThreshold(t),0)/mem.length;
       const st=status(slA);let top=mem[0];for(const t of mem)if(sysRecovery(t)>sysRecovery(top))top=t;
       const topRec=sysRecovery(top),topThr=sysThreshold(top),topOver=topRec>topThr;
-      const rtag=recA<1?tag('Hazır','var(--green)'):topOver?tag('~'+Math.round(recA)+' sa yük · detayda aşım','var(--red)','🔴'):tag('~'+Math.round(recA)+' sa yük','var(--orange)','⏳');
+      const rtag=recA<1?tag('Hazır','var(--green)'):topOver?tag('~'+Math.round(recA)+' sa · detayda aşım','var(--red)','🔴'):tag('~'+Math.round(recA)+' sa','var(--orange)','⏳');
       h+=`<div class="card tight" data-act="groupdetail" data-g="${gi}" style="cursor:pointer"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:22px">${G.icon}</div>
-        <div style="flex:1"><div style="font-weight:600">${esc(G.label)} <span class="muted tiny">(${mem.length} bölge ortalaması)</span></div><div class="muted tiny">${esc(G.sub)} · aşırı yük sınırı ${Math.round(thrA)} sa</div>
+        <div style="flex:1"><div style="font-weight:600">${esc(G.label)} <span class="muted tiny">(${mem.length} bölge ortalaması)</span></div><div class="muted tiny">${esc(G.sub)} · eşik ${Math.round(thrA)} sa</div>
           <div style="margin-top:6px">${barHtml(thrA?recA/thrA:0,{color:topOver?'var(--red)':G.color,cls:'md',bg:'var(--surfhi)'})}</div></div>
         <div style="text-align:right;min-width:76px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(slA)} · ${st.t}</div>
           <div style="margin-top:4px;display:flex;justify-content:flex-end">${rtag}</div></div>
         <div style="font-size:18px;color:var(--onvar);margin-left:2px">›</div></div>
-        <div class="muted small" style="margin-top:8px;color:${topOver?'var(--red)':'var(--onvar)'}">${topOver?'⚠ ':''}Detayda en yüksek: ${esc(SINFO[top].label)} — ${Math.round(topRec)} sa${topOver?` (aşırı yük sınırı ${Math.round(topThr)} sa aşıldı)`:''}. Tıkla → bölgeleri ayrı gör.</div></div>`;
+        <div class="muted small" style="margin-top:8px;color:${topOver?'var(--red)':'var(--onvar)'}">${topOver?'⚠ ':''}Detayda en yüksek: ${esc(SINFO[top].label)} — ${Math.round(topRec)} sa${topOver?` (eşik ${Math.round(topThr)} sa aşıldı)`:''}. Tıkla → bölgeleri ayrı gör.</div></div>`;
       continue;
     }
     const st=status(sl[s]);const rec=sysRecovery(s),thr=sysThreshold(s);
-    const over=rec>thr;const rtag=rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa yük · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa yük','var(--orange)','⏳');
+    const over=rec>thr;const rtag=rec<1?tag('Hazır','var(--green)'):over?tag('~'+Math.round(rec)+' sa · aşırı','var(--red)','🔴'):tag('~'+Math.round(rec)+' sa','var(--orange)','⏳');
     h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:22px">${SINFO[s].icon}</div>
-      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)} · aşırı yük sınırı ${Math.round(thr)} sa</div>
+      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[s].label)}</div><div class="muted tiny">${esc(SINFO[s].desc)} · eşik ${Math.round(thr)} sa</div>
         <div style="margin-top:6px">${barHtml(thr?rec/thr:0,{color:over?'var(--red)':SINFO[s].color,cls:'md',bg:'var(--surfhi)'})}</div></div>
       <div style="text-align:right;min-width:76px"><div style="font-size:12px;color:${st.c};font-weight:500">${fmt(sl[s])} · ${st.t}</div>
         <div style="margin-top:4px;display:flex;justify-content:flex-end">${rtag}</div></div></div>
-      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme (${Math.round(rec)} sa) aşırı yük sınırını (${Math.round(thr)} sa) aştı — bu sistemi bugün dinlendir.</div>`:''}</div>`;}
+      ${over?`<div class="muted small" style="margin-top:8px;color:var(--red)">Birikmiş iyileşme (${Math.round(rec)} sa) eşiği (${Math.round(thr)} sa) aştı — bu sistemi bugün dinlendir.</div>`:''}</div>`;}
   h+=sec('Bugün için öneri');
   const ready=S_ORDER.filter(s=>sysRecovery(s)<sysThreshold(s)).sort((a,b)=>sl[a]-sl[b]);
   const focus=ready.filter(s=>sl[s]<S.cfg.lowBelow&&sysRecovery(s)<1).slice(0,2);
