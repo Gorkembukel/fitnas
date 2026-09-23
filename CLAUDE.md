@@ -1,16 +1,31 @@
-# CONTEXT: "Antrenman Takip" — a single-file workout-tracking web app
+# CONTEXT: "Antrenman Takip" — a modular, build-free workout-tracking web app
 
 You are working on an existing web application. Read this entire brief before making changes.
 
 ## What it is
-A personal strength/GtG (Grease-the-Groove) workout tracker. It is ONE self-contained
-`index.html` file: vanilla JS (no framework, no build step), inline CSS, Material-3-ish
-dark/light UI in Turkish. It runs offline from localStorage and optionally syncs to the
-user's own Firebase (Auth + Firestore). It is hosted as a static page (GitHub Pages).
+A personal strength/GtG (Grease-the-Groove) workout tracker. Static site: `index.html` (markup
+only) + `css/app.css` + native ES modules under `js/` — vanilla JS, no framework, NO build step,
+Material-3-ish dark/light UI in Turkish. It runs offline from localStorage and optionally syncs
+to the user's own Firebase (Auth + Firestore). Hosted on GitHub Pages from `main`.
 All UI text and comments are in TURKISH. Keep that.
 
 ## Hard constraints (do not break these)
-- Single file only. No external build tooling. Libraries only via <script> CDN if truly needed.
+- No build tooling, no npm dependencies for the app, no framework. Native `import`/`export` only;
+  libraries only via <script> CDN if truly needed (Firebase compat scripts are loaded that way).
+- Modules are split by responsibility, function-based (no classes). Put new code in the module
+  that owns that responsibility (see "Modül haritası"); create a new module only for a genuinely
+  new responsibility.
+- ES module rules that bite:
+  - An imported binding can't be reassigned. Cross-module mutable UI state lives in
+    `U` (`js/ui/durum-ui.js`): use `U.tab`, `U.balMode`, … — never a top-level `let` that other
+    modules assign.
+  - Leaf modules (`sabitler.js`, `yardimcilar.js`, `firebase-ayar.js`, `ui/durum-ui.js`) must NOT
+    import anything: `kCatalog` and `S` are built at load time from them, and an import cycle
+    through a leaf causes a TDZ error ("Cannot access X before initialization").
+  - Every name you use from another module must be imported; `/dogrula` statically checks this.
+  - Relative import paths must match file names exactly (GitHub Pages is case-sensitive, Windows isn't).
+- Opening `index.html` via `file://` does NOT work (modules need http). Run locally with
+  `npx serve .` or `python -m http.server`.
 - Everything must keep working with NO network (localStorage is the source of truth; Firebase
   is an optional layer on top).
 - Persistence contract: a `serialize()` builds one JSON object of all state; `applyState(d)`
@@ -69,7 +84,7 @@ undo-one-set, day-spread view, one-off exercises, pain/overload flags) · Denge 
 Durum] segments — muscle/pattern/system readiness + pain rating) · Özet (Overview: [Panel | Takvim |
 Egzersiz]) · Rekor (PR tracking with retest intervals) · Program (Weekly editor | Suggestions |
 All exercises + full exercise editor).
-- Rendering is string-templated: `render()` sets `#content.innerHTML = PAGES[tab]()`. Events use
+- Rendering is string-templated: `render()` sets `#content.innerHTML = PAGES[U.tab]()`. Events use
   delegation via `data-act`/`data-id` on a single body click handler; sheets/dialogs use `openSheet`
   /`openDialog`/`closeOverlay`. Follow these patterns; don't introduce a framework.
 
@@ -79,27 +94,42 @@ All exercises + full exercise editor).
 - Minimal formatting, keep the existing visual language and helper functions
   (barHtml, tag, noteBox, sec, statTile, exTags, esc, etc.). Reuse them.
 
-## Kod haritası (index.html — satırlar kayabilir, Grep ile bul)
-| Ne | Yaklaşık satır |
-|---|---|
-| Firebase CDN script'leri | 7–9 |
-| Inline `<script>` başı, `EMBEDDED_FB_CONFIG` | 164–181 |
-| `M_ORDER`, `S_ORDER`, `MINFO`, `SINFO` | 183–209 |
-| `PAIN_AREAS`, `TENDONS`, `KAS`, `SYS_GROUPS` | 215–227 |
-| `CFG_DEFAULT`, `mergeCfg`, `recHours` | 233–249 |
-| `E()`, `kCatalog` | 254–286 |
-| Yardımcılar (`esc`, `dayKey`, `fmt`…) | 289–299 |
-| `KEY`, `S`, `effective`, `serialize`, `migrateTendon`, `applyState`, `load`, `migrateV1`, `save` | 302–362 |
-| Firebase / `Cloud` | 365–435 |
-| `target` | ~438 |
-| `rpeFactor`, `exRecovery`, `sysThreshold`, `sysRecovery` | 500–513 |
-| Ağrı: `painNow`, `setPain`, `painAt`, `painStatus` | 515–535 |
-| UI helper'ları (`tag`, `exTags`, `sec`, `noteBox`, `barHtml`) | 596–601 |
-| `renderToday` / `renderBalance` / `renderProgress` / `renderMax` / `renderLibrary` | 664 / 750 / 844 / 1014 / 1045 |
-| `TABS`, `PAGES`, `render` | 1181–1191 |
-| `openSheet`, `openDialog`, `closeOverlay` | 1195–1197 |
-| Body click delegasyonu (`data-act`) | ~1542 |
-| Başlat: `applyTheme();load();render();cloudInit();` | ~1599 |
+## Modül haritası
+```
+index.html              iskelet: header, #content, #nav, #overlay, #toast + Firebase CDN + <script type="module" src="js/main.js">
+css/app.css             tüm stiller (renk token'ları :root'ta, koyu tema @media + [data-theme])
+js/
+  main.js               giriş: olaylar'ı bağla → applyTheme → load → render → cloudInit
+  firebase-ayar.js      EMBEDDED_FB_CONFIG (ortak Firebase projesi buraya yapıştırılır), HAS_EMBEDDED   [yaprak]
+  sabitler.js           M_ORDER, S_ORDER, MINFO, SINFO, PAIN_*, SYS_GROUPS, gün/ay adları, PHASE, CFG_DEFAULT, mergeCfg, all7   [yaprak]
+  yardimcilar.js        tarih/biçim: pad, dOnly, weekday, dayKey, fmt, esc, dt, monthStart, addMonths…   [yaprak]
+  katalog.js            E(), T(), kCatalog
+  durum.js              KEY, S, effective, defOf, serialize, migrateTendon, applyState, load, migrateV1, save, changed
+  eylemler.js           durumu değiştirenler: addLog, undoLast, saveExercise, resetAll, setPain, setCfg… (→ changed())
+  bulut.js              Cloud, cloudInit/Subscribe/Push/Auth, fbErr, renderIfSettings
+  mantik/
+    program.js          weekNo, target, todayList, scheduledAt, plannedOn, oneoff*, spreadPlan, streak, currentChain
+    toparlanma.js       recHours, rpeFactor, exRecovery, sysThreshold, sysRecovery
+    agri.js             painNow, painAt, painStatus, effSets, painExercises
+    rekor.js            maxHistory, lastMax, maxDue, bestOf, prereqMet
+    analiz.js           status, muscleLoad, systemLoad, patternSets, gapScore, monthAgg
+  ui/
+    durum-ui.js         U = paylaşılan UI durumu (tab, segment modları, filtreler, timerInt, cloudOpen)   [yaprak]
+    html.js             tag, exTags, sec, noteBox, barHtml, statTile
+    overlay.js          overlay, openSheet, openDialog, closeOverlay, showToast
+    render.js           TABS, PAGES, render
+    zamanlayici.js      openTimer, openMetro, beep (Web Audio)
+    editor.js           openEditor (egzersiz editörü)
+    ayarlar.js          openSettings, openConfig ("Analiz ve kurallar")
+    bulut-ekrani.js     openCloud, cloudStatusText
+    tema.js             applyTheme, cycleTheme
+  sayfalar/             her sekme: render* + o sekmenin sheet'leri
+    bugun.js  denge.js  ozet.js  rekor.js  program.js
+  olaylar.js            body click delegasyonu (data-act/data-nav) → ilgili fonksiyon
+```
+Bağımlılık yönü: sabitler/yardimcilar → katalog → durum → mantik/* → ui/* → sayfalar/* → olaylar → main.
+Döngüsel import'lar (ör. durum.changed → ui/render) sadece fonksiyon içinde kullanıldığı için sorunsuzdur;
+modülün üst seviyesinde başka modülün `const`'unu kullanmak döngüde TDZ hatası verir.
 
 localStorage anahtarları: `antrenman_takip_v2` (güncel), `antrenman_takip_v1` (eski, `migrateV1`), `fb_config`.
 
@@ -117,6 +147,6 @@ Bir işe başlarken `/ozellik-baslat` skill'ini kullan.
 | Skill | Ne zaman |
 |---|---|
 | `/ozellik-baslat` | Her yeni iş/özellik başında (git akışı) |
-| `/dogrula` | Her değişiklikten sonra, commit'ten önce (headless test) |
+| `/dogrula` | Her değişiklikten sonra, commit'ten önce (statik import kontrolü + headless test) |
 | `/yeni-alan` | Kalıcı yeni bir state alanı ya da `S.cfg` ayarı eklerken |
 | `/taksonomi` | Kas/sistem anahtarı eklerken, yeniden adlandırırken ya da bölerken |

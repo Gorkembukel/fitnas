@@ -1,84 +1,24 @@
-// Headless doğrulama: index.html içindeki inline <script>'i sahte DOM ile Node vm'de çalıştırır.
-// Kullanım:  node .claude/skills/dogrula/verify.mjs [index.html yolu]
+// Headless doğrulama: js/ modüllerini sahte DOM ile Node'da gerçekten yükler ve test eder.
+// Kullanım:  node .claude/skills/dogrula/verify.mjs
 // Çıkış kodu: 0 = hepsi geçti, 1 = en az bir kontrol başarısız.
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
-import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { codeText } from './lexer.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const htmlPath = process.argv[2] || path.resolve(here, '../../../index.html');
-const html = fs.readFileSync(htmlPath, 'utf8');
-
-// Inline (src'siz) script bloklarını al
-const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
-if (!scripts.length) { console.error('✗ Inline <script> bulunamadı'); process.exit(1); }
-const code = scripts.join('\n;\n');
+const ROOT = path.resolve(here, '../../..');
+const JS = path.join(ROOT, 'js');
+const SELF = fileURLToPath(import.meta.url);
 
 let fails = 0, passes = 0;
 const ok = (name) => { passes++; console.log('  ✓ ' + name); };
 const bad = (name, err) => { fails++; console.log('  ✗ ' + name + '\n      ' + String(err && err.stack || err).split('\n').slice(0, 4).join('\n      ')); };
 const check = (name, fn) => { try { const r = fn(); if (r === false) bad(name, 'false döndü'); else ok(name); } catch (e) { bad(name, e); } };
-
-// 1) Sözdizimi
-console.log('\n[1] Sözdizimi');
-try { new vm.Script(code, { filename: 'index.html<script>' }); ok('script derleniyor'); }
-catch (e) { bad('script derleniyor', e); console.log(`\nSONUÇ: ${passes} geçti, ${fails} başarısız`); process.exit(1); }
-
-// Uygulamanın let/const'larına dışarıdan erişim için aynı script'in sonuna eklenen köprü
-const EXPORT = `
-;globalThis.__T={S,serialize,applyState,mergeCfg,migrateV1,load,render,PAGES,TABS,CFG_DEFAULT,
-  sysRecovery,sysThreshold,painStatus,target,S_ORDER,M_ORDER,SINFO,MINFO,
-  setTab:v=>{tab=v},setModes:(b,p,l)=>{balMode=b;progMode=p;libMode=l}};`;
-
-// ── Sahte DOM: her özelliğe/çağrıya tolerans gösteren eleman ──
-function makeEl(id) {
-  const store = { id, innerHTML: '', textContent: '', value: '', scrollTop: 0, style: {}, dataset: {},
-    children: [], checked: false, disabled: false };
-  const classes = new Set();
-  store.classList = { add: (...c) => c.forEach(x => classes.add(x)), remove: (...c) => c.forEach(x => classes.delete(x)),
-    contains: c => classes.has(c), toggle: (c, f) => { const on = f ?? !classes.has(c); on ? classes.add(c) : classes.delete(c); return on; } };
-  const noop = () => {};
-  return new Proxy(store, {
-    get(t, k) {
-      if (k in t) return t[k];
-      if (k === 'querySelector' || k === 'closest') return () => makeEl();
-      if (k === 'querySelectorAll' || k === 'getElementsByClassName' || k === 'getElementsByTagName') return () => [];
-      if (k === 'getBoundingClientRect') return () => ({ top: 0, left: 0, width: 0, height: 0, right: 0, bottom: 0 });
-      if (k === 'getAttribute') return () => null;
-      if (typeof k === 'symbol') return undefined;
-      return noop; // addEventListener, setAttribute, appendChild, focus, remove, ...
-    },
-    set(t, k, v) { t[k] = v; return true; },
-  });
-}
-
-function makeContext(storage) {
-  const els = {};
-  const byId = id => els[id] || (els[id] = makeEl(id));
-  const ls = new Map(Object.entries(storage || {}));
-  const localStorage = { getItem: k => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)),
-    removeItem: k => ls.delete(k), clear: () => ls.clear() };
-  const document = { getElementById: byId, body: makeEl('body'), documentElement: makeEl('html'),
-    createElement: () => makeEl(), querySelector: () => makeEl(), querySelectorAll: () => [],
-    addEventListener: () => {}, head: makeEl('head') };
-  const ctx = { document, localStorage, console, setTimeout: () => 0, clearTimeout: () => {},
-    setInterval: () => 0, clearInterval: () => {}, requestAnimationFrame: () => 0,
-    navigator: { userAgent: 'node', vibrate: () => {} }, location: { href: 'http://localhost/', hash: '' },
-    matchMedia: () => ({ matches: false, addEventListener: () => {}, addListener: () => {} }), alert: () => {}, confirm: () => true };
-  ctx.window = ctx; ctx.self = ctx;
-  vm.createContext(ctx);
-  return { ctx, ls, els };
-}
-
-function boot(label, storage) {
-  const { ctx, ls, els } = makeContext(storage);
-  new vm.Script(code + EXPORT, { filename: 'index.html<script>' }).runInContext(ctx);
-  return { T: ctx.__T, ls, els, label };
-}
+const H = 3600000, now = Date.now();
 
 // ── Test verisi ──
-const H = 3600000, now = Date.now();
 function realisticLogs() {
   const ids = ['push', 'squat', 'wallsit', 'chin', 'run', 'rope', 'row1', 'deadbug'];
   const logs = [];
@@ -113,62 +53,151 @@ const SCENARIOS = [
     custom: [{ id: 'c_x', def: { ...legacyCustom.def, name: 'X', muscles: { yokKas: 1 }, systems: { yokSistem: 1 } } }] }) }],
 ];
 
-// Her sekme + alt segment
-const MODES = { 1: [0, 1], 2: [0, 1, 2], 4: [0, 1, 2] }; // tab → segment indeksleri
-
-for (const [label, storage] of SCENARIOS) {
+// ════════ Alt süreç: tek senaryo ════════
+const argIdx = process.argv.indexOf('--senaryo');
+if (argIdx > 0) {
+  const [label, storage] = SCENARIOS[+process.argv[argIdx + 1]];
   console.log(`\n[${label}]`);
-  let env;
-  try { env = boot(label, storage); ok('açılış: applyTheme → load → render → cloudInit'); }
-  catch (e) { bad('açılış: applyTheme → load → render → cloudInit', e); continue; }
-  const { T } = env;
+  installDom(storage);
+  const imp = p => import(pathToFileURL(path.join(JS, p)).href);
+  try { await imp('main.js'); ok('açılış: main.js (applyTheme → load → render → cloudInit)'); }
+  catch (e) { bad('açılış: main.js (applyTheme → load → render → cloudInit)', e); report(); }
+  const { S, serialize, applyState } = await imp('durum.js');
+  const { CFG_DEFAULT, S_ORDER } = await imp('sabitler.js');
+  const { sysRecovery, sysThreshold } = await imp('mantik/toparlanma.js');
+  const { target } = await imp('mantik/program.js');
+  const { painStatus } = await imp('mantik/agri.js');
+  const { PAGES, TABS, render } = await imp('ui/render.js');
+  const { U } = await imp('ui/durum-ui.js');
 
-  for (let t = 0; t < T.PAGES.length; t++) {
-    for (const m of (MODES[t] || [0])) {
-      check(`render ${T.TABS[t]}${MODES[t] ? ' #' + m : ''}`, () => {
-        T.setTab(t); T.setModes(t === 1 ? m : 0, t === 2 ? m : 0, t === 4 ? m : 0);
-        const h = T.PAGES[t](); if (typeof h !== 'string' || !h.length) throw new Error('boş/string olmayan HTML');
-        if (/undefined|NaN/.test(h.replace(/<[^>]*>/g, ''))) throw new Error('görünür metinde "undefined"/"NaN" var');
-        T.render();
-      });
-    }
+  const MODES = { 1: ['balMode', [0, 1]], 2: ['progMode', [0, 1, 2]], 4: ['libMode', [0, 1, 2]] }; // sekme → alt segment
+  for (let t = 0; t < PAGES.length; t++) {
+    const [key, modes] = MODES[t] || [null, [0]];
+    for (const m of modes) check(`render ${TABS[t]}${key ? ' #' + m : ''}`, () => {
+      U.tab = t; U.balMode = U.progMode = U.libMode = 0; if (key) U[key] = m;
+      const h = PAGES[t](); if (typeof h !== 'string' || !h.length) throw new Error('boş/string olmayan HTML');
+      if (/undefined|NaN/.test(h.replace(/<[^>]*>/g, ''))) throw new Error('görünür metinde "undefined"/"NaN" var');
+      render();
+    });
   }
-
   check('serialize → applyState round-trip', () => {
-    const a = JSON.parse(JSON.stringify(T.serialize())); T.applyState(a);
-    const b = JSON.parse(JSON.stringify(T.serialize())); delete a.updatedAt; delete b.updatedAt;
+    const a = JSON.parse(JSON.stringify(serialize())); applyState(a);
+    const b = JSON.parse(JSON.stringify(serialize())); delete a.updatedAt; delete b.updatedAt;
     const sa = JSON.stringify(a), sb = JSON.stringify(b);
     if (sa !== sb) throw new Error('round-trip farklı: ' + sa.slice(0, 120) + ' … vs … ' + sb.slice(0, 120));
   });
-
   check('cfg tüm CFG_DEFAULT anahtarlarını içeriyor', () => {
-    const miss = Object.keys(T.CFG_DEFAULT).filter(k => !(k in T.S.cfg)); if (miss.length) throw new Error('eksik: ' + miss);
+    const miss = Object.keys(CFG_DEFAULT).filter(k => !(k in S.cfg)); if (miss.length) throw new Error('eksik: ' + miss);
   });
-
   check('sysRecovery sonlu ve ≥0, eşik >0 (tüm sistemler)', () => {
-    for (const s of T.S_ORDER) {
-      const r = T.sysRecovery(s), th = T.sysThreshold(s);
+    for (const s of S_ORDER) {
+      const r = sysRecovery(s), th = sysThreshold(s);
       if (!Number.isFinite(r) || r < 0) throw new Error(`${s}: sysRecovery=${r}`);
       if (!Number.isFinite(th) || th <= 0) throw new Error(`${s}: sysThreshold=${th}`);
-      const ready = Math.max(0, Math.min(1, 1 - r / th)); if (!(ready >= 0 && ready <= 1)) throw new Error(`${s}: readiness=${ready}`);
     }
   });
-
   check('target / painStatus tüm aktif egzersizlerde', () => {
     const d = new Date();
-    for (const id of T.S.active) { const e = T.S.ex(id); if (!e) continue;
-      const tg = T.target(e, d); if (tg && typeof tg === 'object' && [tg.sets, tg.v].some(x => x != null && !Number.isFinite(x))) throw new Error(`${id}: target=${JSON.stringify(tg)}`);
-      const ps = T.painStatus(e, d); if (!ps || !['normal', 'half', 'skip'].includes(ps.mode)) throw new Error(`${id}: painStatus=${JSON.stringify(ps)}`);
+    for (const id of S.active) { const e = S.ex(id); if (!e) continue;
+      const tg = target(e, d); if (tg && [tg.sets, tg.v].some(x => !Number.isFinite(x))) throw new Error(`${id}: target=${JSON.stringify(tg)}`);
+      const ps = painStatus(e, d); if (!ps || !['normal', 'half', 'skip', 'flag'].includes(ps.mode)) throw new Error(`${id}: painStatus=${JSON.stringify(ps)}`);
     }
   });
-
   if (label.startsWith('Eski taksonomi')) check('v2 migrasyonu: kas/tendon anahtarları kalmadı', () => {
     const left = [];
-    for (const id in T.S.overrides) for (const k of ['kas', 'tendon']) if (T.S.overrides[id]?.systems?.[k] != null) left.push(`override:${id}.${k}`);
-    for (const c of T.S.custom) for (const k of ['kas', 'tendon']) if (c.systems?.[k] != null) left.push(`custom:${c.id}.${k}`);
+    for (const id in S.overrides) for (const k of ['kas', 'tendon']) if (S.overrides[id]?.systems?.[k] != null) left.push(`override:${id}.${k}`);
+    for (const c of S.custom) for (const k of ['kas', 'tendon']) if (c.systems?.[k] != null) left.push(`custom:${c.id}.${k}`);
     if (left.length) throw new Error('kalan: ' + left.join(', '));
   });
+  report();
 }
 
+function report() { console.log(`@@SONUC ${passes} ${fails}`); process.exit(fails ? 1 : 0); }
+
+// ── Sahte DOM: her özelliğe/çağrıya tolerans gösteren eleman ──
+function makeEl(id) {
+  const store = { id, innerHTML: '', textContent: '', value: '', scrollTop: 0, style: {}, dataset: {}, children: [], checked: false, disabled: false };
+  const classes = new Set();
+  store.classList = { add: (...c) => c.forEach(x => classes.add(x)), remove: (...c) => c.forEach(x => classes.delete(x)),
+    contains: c => classes.has(c), toggle: (c, f) => { const on = f ?? !classes.has(c); on ? classes.add(c) : classes.delete(c); return on; } };
+  return new Proxy(store, {
+    get(t, k) {
+      if (k in t) return t[k];
+      if (k === 'querySelector' || k === 'closest') return () => makeEl();
+      if (k === 'querySelectorAll' || k === 'getElementsByClassName' || k === 'getElementsByTagName') return () => [];
+      if (k === 'getAttribute') return () => null;
+      if (typeof k === 'symbol') return undefined;
+      return () => {}; // addEventListener, setAttribute, removeAttribute, appendChild, focus, ...
+    },
+    set(t, k, v) { t[k] = v; return true; },
+  });
+}
+function installDom(storage) {
+  const els = {}, ls = new Map(Object.entries(storage || {}));
+  const g = globalThis;
+  const def = (k, v) => Object.defineProperty(g, k, { value: v, configurable: true, writable: true });
+  def('localStorage', { getItem: k => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)), removeItem: k => ls.delete(k), clear: () => ls.clear() });
+  def('document', { getElementById: id => els[id] || (els[id] = makeEl(id)), body: makeEl('body'), documentElement: makeEl('html'), head: makeEl('head'),
+    createElement: () => makeEl(), querySelector: () => makeEl(), querySelectorAll: () => [], addEventListener: () => {} });
+  def('window', g);
+  def('navigator', { userAgent: 'node', vibrate: () => {} });
+  def('location', { href: 'http://localhost/', hash: '', reload: () => {} });
+  def('matchMedia', () => ({ matches: false, addEventListener: () => {}, addListener: () => {} }));
+  def('alert', () => {}); def('confirm', () => true);
+}
+
+// ════════ Ana süreç ════════
+// 1) Statik kontroller: sözdizimi, eksik import, import'a atama, index.html referansları
+console.log('\n[Statik]');
+const files = []; (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walk(p) : p.endsWith('.js') && files.push(p); } })(JS);
+const exportsOf = {}, srcOf = {};
+for (const f of files) { const s = fs.readFileSync(f, 'utf8'); srcOf[f] = s;
+  exportsOf[f] = [...s.matchAll(/^export\s+(?:function\s+([\w$]+)|(?:const|let)\s+([\s\S]*?)(?:;|$))/gm)]
+    .flatMap(m => m[1] ? [m[1]] : [...m[2].matchAll(/(?:^|,)\s*([A-Za-z_$][\w$]*)\s*=/g)].map(x => x[1])); }
+const owner = {}; for (const f in exportsOf) for (const n of exportsOf[f]) (owner[n] ||= []).push(f);
+check('export adları benzersiz', () => { const d = Object.entries(owner).filter(([, v]) => v.length > 1); if (d.length) throw new Error(d.map(([n, v]) => n + ': ' + v.map(x => path.relative(ROOT, x)).join(' + ')).join('; ')); });
+const esc = n => n.replace(/\$/g, '\\$');
+let missing = [], reassigned = [], lexErr = [];
+for (const f of files) {
+  const s = srcOf[f], rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  const imported = new Set([...s.matchAll(/^import\s*\{([^}]*)\}/gm)].flatMap(m => m[1].split(',').map(x => x.trim()).filter(Boolean)));
+  let code; try { code = codeText(s.replace(/^import .*$/gm, '')); } catch (e) { lexErr.push(rel + ': ' + e.message); continue; }
+  const own = new Set(exportsOf[f]);
+  for (const n in owner) if (!own.has(n) && !imported.has(n)) {
+    // Yerel tanım (parametre/let/const/function) varsa gölgeleme olabilir; yalnızca yerelde hiç tanımlanmayanları raporla
+    const used = new RegExp('(?<![\\w$.])' + esc(n) + '(?![\\w$])(?!\\s*:)').test(code);
+    const localDecl = new RegExp('(?:\\b(?:const|let|var|function)\\s+|[(,{]\\s*)' + esc(n) + '\\b').test(code);
+    if (used && !localDecl) missing.push(`${rel}: ${n} (${path.relative(ROOT, owner[n][0]).replace(/\\/g, '/')})`);
+  }
+  for (const n of imported) if (new RegExp('(?<![\\w$.])' + esc(n) + '\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)').test(code)) reassigned.push(`${rel}: ${n}`);
+}
+check('tokenizer tüm dosyaları okuyabildi', () => { if (lexErr.length) throw new Error(lexErr.join('\n')); });
+check('kullanılıp import edilmemiş ad yok', () => { if (missing.length) throw new Error(missing.join('\n      ')); });
+check("import edilen bağlamaya atama yok (paylaşılan UI durumu için U.x kullan)", () => { if (reassigned.length) throw new Error(reassigned.join('\n      ')); });
+check('index.html: css ve main.js referansları mevcut', () => {
+  const h = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  for (const [re, p] of [[/href="(css\/[^"]+)"/g], [/src="(js\/[^"]+)"/g]]) for (const m of h.matchAll(re)) if (!fs.existsSync(path.join(ROOT, m[1]))) throw new Error('eksik dosya: ' + m[1]);
+  if (!/type="module"\s+src="js\/main\.js"/.test(h)) throw new Error('<script type="module" src="js/main.js"> yok');
+});
+check('import yolları dosya adlarıyla birebir aynı (büyük/küçük harf; GitHub Pages duyarlıdır)', () => {
+  const exact = p => { const rel = path.relative(ROOT, p).split(path.sep); let d = ROOT;
+    for (const seg of rel) { if (!fs.readdirSync(d).includes(seg)) return false; d = path.join(d, seg); } return true; };
+  const bad = [];
+  for (const f of files) for (const m of srcOf[f].matchAll(/^import\s[^'"]*['"]([^'"]+)['"]/gm)) {
+    const t = path.resolve(path.dirname(f), m[1]); if (!exact(t)) bad.push(`${path.relative(ROOT, f)} → ${m[1]}`); }
+  if (bad.length) throw new Error(bad.join('\n      '));
+});
+check('yaprak modüller import etmiyor (sabitler, yardimcilar, firebase-ayar, ui/durum-ui)', () => {
+  for (const p of ['sabitler.js', 'yardimcilar.js', 'firebase-ayar.js', 'ui/durum-ui.js']) if (/^import /m.test(srcOf[path.join(JS, p)] || '')) throw new Error(p + ' import içeriyor (döngüsel yükleme riski)');
+});
+
+// 2) Senaryolar: her biri ayrı süreçte (modüller tekil olduğundan temiz durum için)
+for (let i = 0; i < SCENARIOS.length; i++) {
+  const r = spawnSync(process.execPath, [SELF, '--senaryo', String(i)], { encoding: 'utf8' });
+  const out = (r.stdout || '') + (r.stderr ? '\n' + r.stderr : '');
+  const m = out.match(/@@SONUC (\d+) (\d+)/);
+  process.stdout.write(out.replace(/@@SONUC.*\n?/, '').replace(/\n+$/, '') + '\n');
+  if (m) { passes += +m[1]; fails += +m[2]; } else { fails++; console.log('  ✗ senaryo süreci çöktü (çıkış ' + r.status + ')'); }
+}
 console.log(`\nSONUÇ: ${passes} geçti, ${fails} başarısız`);
 process.exit(fails ? 1 : 0);
