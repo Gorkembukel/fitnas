@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push -f:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)",
+      "PowerShell(git push -f:*)",
+      "PowerShell(git push --force:*)",
+      "PowerShell(git push --force-with-lease:*)"
+    ],
+    "ask": [
+      "Bash(git merge:*)",
+      "PowerShell(git merge:*)",
+      "Bash(gh pr merge:*)",
+      "PowerShell(gh pr merge:*)",
+      "Bash(git push origin main:*)",
+      "PowerShell(git push origin main:*)"
+    ]
+  }
+}
