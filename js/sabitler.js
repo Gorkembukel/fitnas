@@ -57,7 +57,8 @@ export const CFG_DEFAULT={
   gapOpen:2, gapLow:1, gapAux:false, balanceRatio:0.5,
   rpe:{f8:1,f7:0.75,f6:0.5,f5:0.35,f0:0.2}, impactFactor:0.75, lookbackHours:96, overloadMult:1, setContrib:0.5,
   halfDays:[3,7], gtgRpe:5, spaceMinHours:24,
-  painHalfLevel:2, painSkipLevel:3, painStrain:[0,12,24,48]
+  painHalfLevel:2, painSkipLevel:3, painStrain:[0,12,24,48],
+  calibAuxShare:0.5
 };
 export function mergeCfg(s){s=s||{};return {
   recovery:Object.assign({},CFG_DEFAULT.recovery,s.recovery||{}),
@@ -65,6 +66,7 @@ export function mergeCfg(s){s=s||{};return {
   gapOpen:s.gapOpen??CFG_DEFAULT.gapOpen, gapLow:s.gapLow??CFG_DEFAULT.gapLow, gapAux:s.gapAux??CFG_DEFAULT.gapAux, balanceRatio:s.balanceRatio??CFG_DEFAULT.balanceRatio,
   rpe:Object.assign({},CFG_DEFAULT.rpe,s.rpe||{}), impactFactor:s.impactFactor??CFG_DEFAULT.impactFactor, lookbackHours:s.lookbackHours??CFG_DEFAULT.lookbackHours, overloadMult:s.overloadMult??CFG_DEFAULT.overloadMult, setContrib:s.setContrib??CFG_DEFAULT.setContrib,
   halfDays:Array.isArray(s.halfDays)?s.halfDays.slice():CFG_DEFAULT.halfDays.slice(), gtgRpe:s.gtgRpe??CFG_DEFAULT.gtgRpe, spaceMinHours:s.spaceMinHours??CFG_DEFAULT.spaceMinHours,
-  painHalfLevel:s.painHalfLevel??CFG_DEFAULT.painHalfLevel, painSkipLevel:s.painSkipLevel??CFG_DEFAULT.painSkipLevel, painStrain:Array.isArray(s.painStrain)?s.painStrain.slice():CFG_DEFAULT.painStrain.slice()
+  painHalfLevel:s.painHalfLevel??CFG_DEFAULT.painHalfLevel, painSkipLevel:s.painSkipLevel??CFG_DEFAULT.painSkipLevel, painStrain:Array.isArray(s.painStrain)?s.painStrain.slice():CFG_DEFAULT.painStrain.slice(),
+  calibAuxShare:s.calibAuxShare??CFG_DEFAULT.calibAuxShare
 };}
 export const all7=[1,2,3,4,5,6,7];

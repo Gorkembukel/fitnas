@@ -1,8 +1,8 @@
 // Rekor sekmesi.
 import {S} from '../durum.js';
-import {addMax,setTestInterval} from '../eylemler.js';
-import {lastMax,maxDue,maxHistory} from '../mantik/rekor.js';
-import {kIntervals} from '../sabitler.js';
+import {addMax,setMaxRecovery,setTestInterval} from '../eylemler.js';
+import {calibSuggest,lastMax,maxDue,maxHistory,pendingCalib} from '../mantik/rekor.js';
+import {SINFO,kIntervals} from '../sabitler.js';
 import {noteBox,sec} from '../ui/html.js';
 import {closeOverlay,openDialog,openSheet,overlay} from '../ui/overlay.js';
 import {dOnly,dayKey,daysSince,dm,esc,fmt} from '../yardimcilar.js';
@@ -17,6 +17,12 @@ export function renderMax(){
         <div class="muted small">${withHist.length} egzersiz takip ediliyor · ${due.length} tanesi test zamanı</div></div>
       <button class="text" data-act="interval">Değiştir</button></div></div>
     <button class="fill block" data-act="addmax">＋ Rekor / max testi gir</button>`;
+  const pending=pendingCalib();
+  if(pending.length){h+=sec('Kalibrasyon bekleyen testler','Bu testten sonra tam toparlanana kadar geçen süreyi gir; sistemin toparlanma sabiti için öneri hesaplanır');
+    for(const m of pending){const e=S.ex(m.e);if(!e)continue;
+      h+=`<div class="card tight"><div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1"><div style="font-weight:600">${esc(e.name)}</div><div class="muted tiny">${dm(new Date(m.t))} · ${fmt(m.v)} ${esc(e.unit)}</div></div>
+        <button class="out" data-act="calibopen" data-id="${e.id}" data-t="${m.t}">Toparlanma süresini gir</button></div></div>`;}}
   if(due.length){h+=sec('Test zamanı geldi','Bu egzersizlerde son testin üzerinden yeterince zaman geçti');for(const e of due)h+=maxCard(e,true);}
   h+=sec(withHist.length?'Takip edilen rekorlar':'Rekorlar');
   if(!withHist.length)h+=noteBox('Henüz rekor girilmedi. Yukarıdaki düğmeyle bir egzersiz seç ve maksimum değerini kaydet. Girdiğin her rekor Sıradaki sekmesindeki kriterleri de günceller.',{icon:'🏅'});
@@ -34,7 +40,9 @@ export function maxCard(e,isDue){
       ${d!==null?`<div style="color:${d>=0?'var(--green)':'var(--red)'};font-size:13px;padding-bottom:6px;font-weight:600">${d>=0?'▲':'▼'} ${fmt(Math.abs(d))}</div>`:''}
       <div class="spacer"></div><div class="mini">${mini}</div></div>
     <div class="muted small" style="margin-top:6px">Son test: ${dm(new Date(last.t))} · ${since} gün önce · ${hist.length} kayıt</div>
-    <div style="text-align:right;margin-top:8px"><button class="${isDue?'fill':'out'}" data-act="retest" data-id="${e.id}">Yeniden test et</button></div></div>`;
+    <div style="text-align:right;margin-top:8px;display:flex;justify-content:flex-end;gap:8px">
+      ${last.recH!=null?`<button class="text" data-act="calibsuggest" data-id="${e.id}" data-t="${last.t}">Kalibrasyon (${fmt(last.recH)} sa)</button>`:''}
+      <button class="${isDue?'fill':'out'}" data-act="retest" data-id="${e.id}">Yeniden test et</button></div></div>`;
 }
 /* ── max sheet ── */
 export function openMax(fixedId){
@@ -55,6 +63,34 @@ export function openMax(fixedId){
   if(sel)sel.onchange=()=>{cur=sel.value;e=S.ex(cur);const l=lastMax(cur);v=l?l.v:(e.targets[0]?e.targets[0].v:1);upd();};
   overlay.querySelector('#mdate').onchange=ev=>{if(ev.target.value)dateStr=ev.target.value;};
   overlay.querySelector('#msv').onclick=()=>{addMax(cur,v,new Date(dateStr+'T12:00:00').getTime());closeOverlay();};
+}
+/* ── kalibrasyon sheet'leri ── */
+export function openCalibInput(id,t){
+  const e=S.ex(id),m=S.maxes.find(x=>x.e===id&&x.t===t);if(!e||!m)return;
+  let h=m.recH!=null?m.recH:48;
+  openSheet(`<div class="title-lg">${esc(e.name)} — toparlanma süresi</div>
+    <div class="muted small" style="margin:8px 0 12px">${dm(new Date(m.t))} tarihindeki maksimum testten (RPE10 kabul edilir) sonra, bu hareketi tekrar tam güçle yapabilecek kadar toparlanana dek kaç saat geçti?</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:6px 0 16px">
+      <button class="roundbtn" id="chmin">−</button><div style="font-size:28px;font-weight:500;min-width:110px;text-align:center" id="chv">${h} sa</div><button class="roundbtn" id="chpl">＋</button></div>
+    <button class="fill block" id="chsv">✓ Kaydet ve öneriyi gör</button>`);
+  const upd=()=>overlay.querySelector('#chv').textContent=`${h} sa`;
+  overlay.querySelector('#chmin').onclick=()=>{h=Math.max(1,h-6);upd();};
+  overlay.querySelector('#chpl').onclick=()=>{h=h+6;upd();};
+  overlay.querySelector('#chsv').onclick=()=>{setMaxRecovery(id,t,h);openCalibSuggest(id,t);};
+}
+export function openCalibSuggest(id,t){
+  const e=S.ex(id),m=S.maxes.find(x=>x.e===id&&x.t===t);if(!e||!m||m.recH==null)return;
+  const sug=calibSuggest(e,m.recH);
+  let rows='';for(const r of sug){const s1=Math.round(r.suggest);
+    rows+=`<div class="card tight"><div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:20px">${SINFO[r.s].icon}</div>
+      <div style="flex:1"><div style="font-weight:600">${esc(SINFO[r.s].label)}</div>
+        <div class="muted tiny">şu an ${Math.round(r.cur)} sa${r.w<1?' · yardımcı sistem':''}</div></div>
+      <button class="out" data-act="calibapply" data-s="${r.s}" data-v="${s1}">${s1} sa uygula</button></div></div>`;}
+  openSheet(`<div class="title-lg">${esc(e.name)} — kalibrasyon önerisi</div>
+    <div class="muted small" style="margin:8px 0 12px">${m.recH} saatlik gerçek toparlanmana göre, bu hareketi yükleyen sistemler için önerilen toparlanma süreleri. İstediğini uygula, ayarlar hemen değişir.</div>
+    ${rows}
+    <button class="text block" data-close style="margin-top:8px">Kapat</button>`);
 }
 export function openInterval(){
   openDialog(`<div class="title-md" style="margin-bottom:12px">Max test aralığı</div>
