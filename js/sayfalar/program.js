@@ -1,7 +1,7 @@
 // Program sekmesi: Haftalık | Öneriler | Egzersizler.
 import {S} from '../durum.js';
 import {gapScore,muscleLoad,status,systemLoad} from '../mantik/analiz.js';
-import {target,weekDate} from '../mantik/program.js';
+import {oneoffIds,target,todayList,weekDate} from '../mantik/program.js';
 import {bestOf,prereqMet} from '../mantik/rekor.js';
 import {recHours} from '../mantik/toparlanma.js';
 import {MINFO,M_ORDER,SINFO,S_ORDER,kDayNames,kDayShort,kGrpOrder,kSessions} from '../sabitler.js';
