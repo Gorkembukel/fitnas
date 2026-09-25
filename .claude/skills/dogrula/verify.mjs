@@ -103,6 +103,20 @@ if (argIdx > 0) {
       const ps = painStatus(e, d); if (!ps || !['normal', 'half', 'skip', 'flag'].includes(ps.mode)) throw new Error(`${id}: painStatus=${JSON.stringify(ps)}`);
     }
   });
+  const { openOneoffPicker } = await imp('sayfalar/program.js');
+  const { addOneoff, removeOneoff } = await imp('eylemler.js');
+  const { oneoffIds } = await imp('mantik/program.js');
+  const { dayKey, dOnly } = await imp('yardimcilar.js');
+  const { overlay, closeOverlay } = await imp('ui/overlay.js');
+  check('bugüne özel egzersiz: picker açılır, ekle/kaldır çalışır', () => {
+    openOneoffPicker();
+    if (!overlay.innerHTML.includes('Bugüne özel egzersiz')) throw new Error('sheet açılmadı');
+    const key = dayKey(dOnly(new Date())), e = S.all().find(x => !oneoffIds(key).includes(x.id));
+    addOneoff(e.id, key); if (!oneoffIds(key).includes(e.id)) throw new Error('eklenmedi');
+    openOneoffPicker(); U.tab = 0; render();
+    removeOneoff(e.id, key); if (oneoffIds(key).includes(e.id)) throw new Error('kaldırılmadı');
+    closeOverlay();
+  });
   if (label.startsWith('Eski taksonomi')) check('v2 migrasyonu: kas/tendon anahtarları kalmadı', () => {
     const left = [];
     for (const id in S.overrides) for (const k of ['kas', 'tendon']) if (S.overrides[id]?.systems?.[k] != null) left.push(`override:${id}.${k}`);
@@ -165,7 +179,8 @@ for (const f of files) {
   const own = new Set(exportsOf[f]);
   for (const n in owner) if (!own.has(n) && !imported.has(n)) {
     // Yerel tanım (parametre/let/const/function) varsa gölgeleme olabilir; yalnızca yerelde hiç tanımlanmayanları raporla
-    const used = new RegExp('(?<![\\w$.])' + esc(n) + '(?![\\w$])(?!\\s*:)').test(code);
+    // Önünde tek '.' varsa property erişimidir (obj.x); '...' (spread) ise gerçek kullanımdır
+    const used = new RegExp('(?<![\\w$])(?:(?<=\\.\\.\\.)|(?<!\\.))' + esc(n) + '(?![\\w$])(?!\\s*:)').test(code);
     const localDecl = new RegExp('(?:\\b(?:const|let|var|function)\\s+|[(,{]\\s*)' + esc(n) + '\\b').test(code);
     if (used && !localDecl) missing.push(`${rel}: ${n} (${path.relative(ROOT, owner[n][0]).replace(/\\/g, '/')})`);
   }
