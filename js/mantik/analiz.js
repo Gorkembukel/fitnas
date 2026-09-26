@@ -18,7 +18,8 @@ export function monthAgg(y,mo){
   const logs=S.logs.filter(l=>{const d=dt(l);return d.getFullYear()===y&&d.getMonth()===mo;});
   const days=new Set(logs.map(l=>dayKey(dt(l))));
   const ex=new Set(logs.map(l=>l.e));
-  const reps=logs.reduce((a,l)=>a+(l.v||0),0);
+  const repsByUnit={};
+  for(const l of logs){const e=S.ex(l.e);const u=e?e.unit:'tekrar';repsByUnit[u]=(repsByUnit[u]||0)+(l.v||0);}
   const avgRpe=logs.length?logs.reduce((a,l)=>a+l.r,0)/logs.length:0;
   const ml={};for(const m of M_ORDER)ml[m]=0;const sl={};for(const s of S_ORDER)sl[s]=0;
   for(const l of logs){const e=S.ex(l.e);if(!e)continue;for(const m in e.muscles)ml[m]+=e.muscles[m];for(const s in e.systems)sl[s]+=e.systems[s];}
@@ -26,5 +27,5 @@ export function monthAgg(y,mo){
   const today=dOnly(new Date());let plan=0,done=0;
   const dim=new Date(y,mo+1,0).getDate();
   for(let dn=1;dn<=dim;dn++){const dd=new Date(y,mo,dn);if(dd>today)break;const p=plannedSets(dd);plan+=p;done+=Math.min(p,doneSetsOn(dd));}
-  return {logs,daysTrained:days.size,sets:logs.length,ex:ex.size,reps,avgRpe,ml,sl,plan,done};
+  return {logs,daysTrained:days.size,sets:logs.length,ex:ex.size,repsByUnit,avgRpe,ml,sl,plan,done};
 }
