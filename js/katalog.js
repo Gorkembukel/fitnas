@@ -1,5 +1,6 @@
 // Yerleşik egzersiz kataloğu.
 import {all7} from './sabitler.js';
+import {yeniEgzersizler} from './yeni-egzersizler.js';
 
 /* ══════════════ KATALOG ══════════════ */
 export function T(a){return a.map(x=>({sets:x[0],v:x[1]}));}
@@ -35,4 +36,4 @@ export const kCatalog=[
   E('pallof','Pallof press (bant)',{pattern:'Core · rotasyon',muscles:{coreRot:1,core:.5},systems:{sinir:1,kasGovde:.5},days:[4],targets:T([[3,8],[3,8],[3,10],[2,8]]),rpe:5,block:'Bant gerekli',prereqText:'Direnç bandı al',fills:'Anti-rotasyon core',note:'Her yan ayrı set.'}),
   E('carry','Çanta taşıma (loaded carry)',{pattern:'Taşıma',unit:'sn',muscles:{onkol:1,core:1,ustSirt:.5,baldir:.5},systems:{kasCekme:.5,tendonKol:.5,kemik:.5,sinir:.5},days:[1],targets:T([[3,30],[3,40],[3,45],[2,30]]),rpe:6,block:'Blok 2',prereqText:'Kriter yok, hazır hissettiğinde ekle',fills:'Taşıma kalıbı, kavrama, gövde stabilitesi',note:'Bir elde ağır çanta. Dik dur, omuzlar kapalı.'}),
   E('pullup','Pull-up (tam tekrar)',{pattern:'Dikey çekme',grp:'Çekme',muscles:{lat:1,ustSirt:.5,biseps:.5,onkol:.5},systems:{sinir:1,kasCekme:1,tendonKol:.5},days:[2,5,7],targets:T([[3,1],[3,1],[3,1],[2,1]]),rpe:8,block:'Hedef',prereqId:'chin',prereqValue:2,prereqText:'Chin-up 2 tekrar ve negatif 5 sn kontrollü',fills:'Dikey çekme hedefi',note:'Negatifin yerine geçer, ekleyince negatifi kapat.'}),
-];
+].concat(yeniEgzersizler(E,T));
