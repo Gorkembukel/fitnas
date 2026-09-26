@@ -33,7 +33,8 @@ export function renderPanel(){
      <button class="iconbtn" data-act="panelnext">›</button></div></div>`;
   h+=sec('Nicelik','Bu ay ne kadar çalıştın');
   h+=`<div class="stats">${statTile('Antrenman günü',A.daysTrained)}${statTile('Toplam set',A.sets)}${statTile('Farklı egzersiz',A.ex)}</div>`;
-  h+=`<div class="stats" style="margin-top:8px">${statTile('Toplam tekrar/sn',fmt(A.reps))}${statTile('Seri (gün)',currentChain())}${statTile('Uyum',adh+'%')}</div>`;
+  const unitOrder=['tekrar','sn','dk'],repsTxt=unitOrder.filter(u=>A.repsByUnit[u]).map(u=>`${fmt(A.repsByUnit[u])} ${u}`).join(' · ')||'—';
+  h+=`<div class="stats" style="margin-top:8px">${statTile('Toplam tekrar/sn',repsTxt)}${statTile('Seri (gün)',currentChain())}${statTile('Uyum',adh+'%')}</div>`;
   h+=sec('Nitelik','Nasıl geçti');
   h+=`<div class="card tight">
     <div class="mrow"><div style="flex:1">Plana uyum</div><div style="font-weight:600">${adh}%${delta(adh,padh,'%')}</div></div>
