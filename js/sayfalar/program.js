@@ -3,7 +3,7 @@ import {S} from '../durum.js';
 import {gapScore,muscleLoad,status,systemLoad} from '../mantik/analiz.js';
 import {oneoffIds,target,todayList,weekDate} from '../mantik/program.js';
 import {bestOf,prereqMet} from '../mantik/rekor.js';
-import {recHours} from '../mantik/toparlanma.js';
+import {recHours,rpeFactor} from '../mantik/toparlanma.js';
 import {MINFO,M_ORDER,SINFO,S_ORDER,kDayNames,kDayShort,kGrpOrder,kSessions} from '../sabitler.js';
 import {U} from '../ui/durum-ui.js';
 import {exTags,noteBox,sec,tag} from '../ui/html.js';
@@ -46,8 +46,13 @@ export function programAdvice(){
   for(const s of S_ORDER){const need=recHours(s);if(need<=S.cfg.spaceMinHours)continue;
     const days=[];for(let d=1;d<=7;d++)if(sched[d].some(e=>(e.systems[s]||0)>=1))days.push(d);
     if(days.length<2)continue;
-    let minGap=7;for(let i=0;i<days.length;i++){let g=(days[(i+1)%days.length]-days[i]+7)%7;if(g===0)g=7;if(g<minGap)minGap=g;}
-    if(minGap*24<need)notes.push({c:'var(--orange)',i:'⚠️',t:`${SINFO[s].label} ${days.map(x=>kDayShort[x-1]).join(', ')} günlerinde ana uyaran alıyor; toparlanması ~${need} saat. Aralarında en az ${Math.ceil(need/24)} gün bırak.`});
+    // Gerçek ihtiyaç, o günü yükleyen egzersizin RPE'sine göre ölçeklenir (düşük RPE = düşük toparlanma borcu).
+    const dayFactor=d=>{let f=0;for(const e of sched[d])if((e.systems[s]||0)>=1)f=Math.max(f,rpeFactor(e.rpe));return f;};
+    let worst=null;
+    for(let i=0;i<days.length;i++){let g=(days[(i+1)%days.length]-days[i]+7)%7;if(g===0)g=7;
+      const eff=need*dayFactor(days[i]);
+      if(g*24<eff&&(!worst||eff>worst.eff))worst={eff};}
+    if(worst)notes.push({c:'var(--orange)',i:'⚠️',t:`${SINFO[s].label} ${days.map(x=>kDayShort[x-1]).join(', ')} günlerinde ana uyaran alıyor; toparlanması ~${Math.round(worst.eff)} saat. Aralarında en az ${Math.ceil(worst.eff/24)} gün bırak.`});
   }
   const rr=S.cfg.balanceRatio;
   const psets=k=>{let n=0;for(let d=1;d<=7;d++)for(const e of sched[d])if(e.pattern.includes(k)){const t=target(e,weekDate(1,d));n+=t?t.sets:0;}return n;};
