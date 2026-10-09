@@ -1,9 +1,9 @@
 // Bugün sekmesi.
-import {S} from '../durum.js';
+import {S,sessionLabel} from '../durum.js';
 import {addLog} from '../eylemler.js';
 import {effSets,painActionOf,painNow,painStatus} from '../mantik/agri.js';
 import {countOn,oneoffTarget,oneoffsOn,spreadPlan,spreadTime,target,todayList,weekNo} from '../mantik/program.js';
-import {PAIN_AMBER,PAIN_AREAS,PAIN_LVL,kDayNames,kSessions} from '../sabitler.js';
+import {PAIN_AMBER,PAIN_AREAS,PAIN_LVL,kDayNames} from '../sabitler.js';
 import {U} from '../ui/durum-ui.js';
 import {openEditor} from '../ui/editor.js';
 import {barHtml,exTags,noteBox,sec} from '../ui/html.js';
@@ -17,7 +17,7 @@ export function renderToday(){
   const offs=oneoffsOn(dayKey(today)).filter(e=>!list.some(x=>x.id===e.id));
   let done=0,tot=0;for(const e of list){const es=effSets(e,today);tot+=es;done+=Math.min(es,countOn(e.id,today));}
   for(const e of offs){const es=effSets(e,today);tot+=es;done+=Math.min(es,countOn(e.id,today));}
-  let h=`<div class="card"><div class="title-lg">${esc(kDayNames[weekday(today)-1])}: ${esc(kSessions[weekday(today)])}</div>
+  let h=`<div class="card"><div class="title-lg">${esc(kDayNames[weekday(today)-1])}: ${esc(sessionLabel(weekday(today)))}</div>
     <div class="muted" style="margin-top:4px">Hafta ${wk} · ${idx===3?'deload haftası (yük %30-40 az)':'yükleme haftası '+(idx+1)+'/3'}</div>
     <div style="margin-top:14px">${barHtml(tot===0?0:done/tot)}</div>
     <div class="small" style="margin-top:6px">${done} / ${tot} set tamamlandı</div></div>`;

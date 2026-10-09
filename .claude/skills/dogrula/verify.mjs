@@ -37,7 +37,7 @@ const SCENARIOS = [
     logs: realisticLogs(), metrics: [{ k: 'Kilo (kg)', v: 80, t: now - 5 * 24 * H }], signals: {}, overrides: {}, maxes: [],
     testInterval: 28, schedLog: [], oneoff: [], pain: { tendonKol: 2, tendonDiz: 3 },
     painLog: [{ s: 'tendonKol', level: 2, t: now - 2 * H }, { s: 'tendonDiz', level: 3, t: now - H }], painAction: [],
-    cfg: { overloadMult: 1.2 }, custom: [] }) }],
+    cfg: { overloadMult: 1.2 }, sessionNames: { 3: 'Mobilite günü' }, custom: [] }) }],
   ['Eski taksonomi (v2, kas/tendon anahtarları)', { antrenman_takip_v2: JSON.stringify({
     start: new Date(now - 10 * 24 * H).toISOString(), active: ['push', 'chin', 'c_eski'],
     logs: [{ e: 'chin', t: now - 5 * H, v: 1, r: 8 }, { e: 'c_eski', t: now - 3 * H, v: 5, r: 7 }],

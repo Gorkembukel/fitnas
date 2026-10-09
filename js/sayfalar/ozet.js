@@ -1,11 +1,11 @@
 // Özet sekmesi: Panel | Takvim | Egzersiz.
-import {S} from '../durum.js';
+import {S,sessionLabel} from '../durum.js';
 import {addMetric} from '../eylemler.js';
 import {painAt,painStatus} from '../mantik/agri.js';
 import {monthAgg} from '../mantik/analiz.js';
 import {currentChain,doneMap,doneSetsOn,oneoffIds,oneoffTarget,oneoffsOn,phaseOf,plannedOn,plannedSets,schedChangesOn,streak,target,weekNo} from '../mantik/program.js';
 import {bestOf} from '../mantik/rekor.js';
-import {M_ORDER,PAIN_AMBER,PAIN_AREAS,PAIN_LVL,PHASE,SINFO,S_ORDER,kDayNames,kGrpOrder,kKinds,kMonths,kSessions} from '../sabitler.js';
+import {M_ORDER,PAIN_AMBER,PAIN_AREAS,PAIN_LVL,PHASE,SINFO,S_ORDER,kDayNames,kGrpOrder,kKinds,kMonths} from '../sabitler.js';
 import {U} from '../ui/durum-ui.js';
 import {barHtml,exTags,noteBox,sec,statTile} from '../ui/html.js';
 import {closeOverlay,openDialog,openSheet,overlay} from '../ui/overlay.js';
@@ -120,7 +120,7 @@ export function openDay(key){
   openSheet(`<div class="dsheet"><div style="display:flex;align-items:center;gap:8px">
      <div class="title-lg" style="flex:1">${date.getDate()} ${kMonths[date.getMonth()]}, ${kDayNames[wd-1]}</div>
      ${ph!==null?`<span class="dpill" style="background:color-mix(in srgb,${PHASE[ph].c} 20%,transparent);color:${PHASE[ph].c}">${PHASE[ph].t}</span>`:'<span class="dpill" style="background:var(--surfhi);color:var(--onvar)">program öncesi</span>'}</div>
-     <div class="muted small" style="margin-top:4px">${esc(kSessions[wd])}${avg?' · ort. RPE '+avg:''}</div>
+     <div class="muted small" style="margin-top:4px">${esc(sessionLabel(wd))}${avg?' · ort. RPE '+avg:''}</div>
      <div style="height:10px"></div>${chTxt}
      ${rows||'<div class="muted small">Bu gün için planlı egzersiz yok.</div>'}</div>`);
 }
