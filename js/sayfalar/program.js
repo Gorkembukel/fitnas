@@ -7,7 +7,7 @@ import {bestOf,prereqMet} from '../mantik/rekor.js';
 import {recHours,rpeFactor} from '../mantik/toparlanma.js';
 import {MINFO,M_ORDER,SINFO,SYS_GROUPS,S_ORDER,kDayNames,kDayShort,kGrpOrder,kSessions} from '../sabitler.js';
 import {U} from '../ui/durum-ui.js';
-import {exTags,noteBox,sec,tag} from '../ui/html.js';
+import {barHtml,exTags,noteBox,sec,tag} from '../ui/html.js';
 import {closeOverlay,openSheet,overlay} from '../ui/overlay.js';
 import {dOnly,dayKey,esc,fmt,weekday} from '../yardimcilar.js';
 
@@ -51,8 +51,49 @@ export function footprintChips(exs,d){
   }
   return h;
 }
+export function weekFootprint(){
+  const musc={},sys={},muscSets={},sysSets={};
+  for(let d=1;d<=7;d++){
+    const exs=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
+    const fp=dayFootprint(exs,d);
+    for(const r in fp.musc){if(musc[r]==null||musc[r]<fp.musc[r])musc[r]=fp.musc[r];muscSets[r]=(muscSets[r]||0)+fp.muscSets[r];}
+    for(const s in fp.sys){if(sys[s]==null||sys[s]<fp.sys[s])sys[s]=fp.sys[s];sysSets[s]=(sysSets[s]||0)+fp.sysSets[s];}
+  }
+  return {musc,sys,muscSets,sysSets};
+}
+export function weekSummaryHtml(){
+  const {musc,sys,muscSets,sysSets}=weekFootprint();
+  const mRows=M_REGIONS.filter(r=>musc[r]!=null).map(r=>({l:r,v:muscSets[r],aux:musc[r]<1,color:'var(--primary)'})).sort((a,b)=>b.v-a.v);
+  const sRows=[];const done={};
+  for(const s of S_ORDER){
+    if(sys[s]==null)continue;
+    const gi=SYS_GROUPS.findIndex(g=>g.members.includes(s));
+    if(gi>=0){
+      if(done[gi])continue;done[gi]=true;
+      const G=SYS_GROUPS[gi],w=Math.max(...G.members.filter(m=>sys[m]!=null).map(m=>sys[m]));
+      const total=G.members.reduce((a,m)=>a+(sysSets[m]||0),0);
+      sRows.push({l:G.label,v:total,aux:w<1,color:G.color,icon:G.icon});
+      continue;
+    }
+    sRows.push({l:SINFO[s].label,v:sysSets[s],aux:sys[s]<1,color:SINFO[s].color,icon:SINFO[s].icon});
+  }
+  sRows.sort((a,b)=>b.v-a.v);
+  if(!mRows.length&&!sRows.length)return '<div class="muted small">Bu hafta hiç set planlanmamış.</div>';
+  const maxM=Math.max(1,...mRows.map(r=>r.v)),maxS=Math.max(1,...sRows.map(r=>r.v));
+  const row=(r,max)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px${r.aux?';opacity:.6':''}">
+    <div style="width:112px;font-size:12.5px;flex:none;overflow:hidden;text-overflow:ellipsis">${r.icon?`<span class="em">${r.icon}</span> `:''}${esc(r.l)}</div>
+    <div style="flex:1">${barHtml(r.v/max,{color:r.color})}</div>
+    <div style="width:46px;text-align:right;font-size:12.5px;flex:none">${Math.round(r.v)} set</div></div>`;
+  let h='';
+  if(mRows.length){h+='<div class="muted tiny" style="margin-bottom:6px">KAS BÖLGESİ</div>';for(const r of mRows)h+=row(r,maxM);}
+  if(sRows.length){h+='<div class="muted tiny" style="margin:10px 0 6px">SİSTEM</div>';for(const r of sRows)h+=row(r,maxS);}
+  return h;
+}
 export function libWeekly(){
   let h=sec('Haftalık program','Günün başlığına dokunup genişlet; amaç etiketini ve egzersizleri oradan düzenle. Bir egzersizi eklediğin/çıkardığın gün, tekrar eden haftalık şablona işlenir ve Bugün, Denge, İlerleme ile eşitlenir.');
+  h+=`<details class="ex" open><summary><div style="font-weight:600">Haftalık toplam</div>
+      <div class="muted tiny">Kas bölgesi ve sistem grubu başına toplam set — hangi alan eksik kalıyor burada görünür</div></summary>
+    <div class="body" style="padding-top:10px">${weekSummaryHtml()}</div></details>`;
   const todayWd=weekday(dOnly(new Date()));
   for(let d=1;d<=7;d++){
     const exs=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
