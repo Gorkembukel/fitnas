@@ -21,17 +21,21 @@ export function renderLibrary(){
 }
 const M_REGIONS=[];for(const m of M_ORDER)if(!M_REGIONS.includes(MINFO[m].region))M_REGIONS.push(MINFO[m].region);
 export function dayFootprint(exs,d){
-  const musc={},sys={};
+  const musc={},sys={},muscSets={},sysSets={};
   for(const e of exs){const t=target(e,weekDate(1,d));if(!t)continue;
-    for(const m in e.muscles){const r=MINFO[m]&&MINFO[m].region;if(!r)continue;const w=e.muscles[m];if(musc[r]==null||musc[r]<w)musc[r]=w;}
-    for(const s in e.systems){const w=e.systems[s];if(sys[s]==null||sys[s]<w)sys[s]=w;}
+    for(const m in e.muscles){const r=MINFO[m]&&MINFO[m].region;if(!r)continue;const w=e.muscles[m];
+      if(musc[r]==null||musc[r]<w)musc[r]=w;
+      muscSets[r]=(muscSets[r]||0)+w*t.sets;}
+    for(const s in e.systems){const w=e.systems[s];
+      if(sys[s]==null||sys[s]<w)sys[s]=w;
+      sysSets[s]=(sysSets[s]||0)+w*t.sets;}
   }
-  return {musc,sys};
+  return {musc,sys,muscSets,sysSets};
 }
 export function footprintChips(exs,d){
-  const {musc,sys}=dayFootprint(exs,d);
+  const {musc,sys,muscSets,sysSets}=dayFootprint(exs,d);
   let h='';
-  for(const r of M_REGIONS)if(musc[r]!=null)h+=tag(r,'var(--onvar)',undefined,musc[r]<1);
+  for(const r of M_REGIONS)if(musc[r]!=null)h+=tag(`${r} · ${Math.round(muscSets[r])} set`,'var(--onvar)',undefined,musc[r]<1);
   const done={};
   for(const s of S_ORDER){
     if(sys[s]==null)continue;
@@ -39,10 +43,11 @@ export function footprintChips(exs,d){
     if(gi>=0){
       if(done[gi])continue;done[gi]=true;
       const G=SYS_GROUPS[gi],w=Math.max(...G.members.filter(m=>sys[m]!=null).map(m=>sys[m]));
-      h+=tag(G.label,G.color,G.icon,w<1);
+      const total=G.members.reduce((a,m)=>a+(sysSets[m]||0),0);
+      h+=tag(`${G.label} · ${Math.round(total)} set`,G.color,G.icon,w<1);
       continue;
     }
-    h+=tag(SINFO[s].label,SINFO[s].color,SINFO[s].icon,sys[s]<1);
+    h+=tag(`${SINFO[s].label} · ${Math.round(sysSets[s])} set`,SINFO[s].color,SINFO[s].icon,sys[s]<1);
   }
   return h;
 }
