@@ -5,7 +5,7 @@ import {oneoffTarget,target} from './mantik/program.js';
 import {openLog,openPainMenu} from './sayfalar/bugun.js';
 import {openGroupDetail} from './sayfalar/denge.js';
 import {openDay,openMetric} from './sayfalar/ozet.js';
-import {openDayPicker,openOneoffPicker} from './sayfalar/program.js';
+import {openDayPicker,openOneoffPicker,openSessionEditor} from './sayfalar/program.js';
 import {openInterval,openMax} from './sayfalar/rekor.js';
 import {openSettings} from './ui/ayarlar.js';
 import {U} from './ui/durum-ui.js';
@@ -50,6 +50,7 @@ document.body.addEventListener('click',ev=>{
     case 'interval':openInterval();break;
     case 'libmode':U.libMode=+el.dataset.v;render();break;
     case 'addday':openDayPicker(+el.dataset.d);break;
+    case 'editsession':openSessionEditor(+el.dataset.d);break;
     case 'rmday':removeDay(id,+el.dataset.d);break;
     case 'pickday':addDay(id,+el.dataset.d);openDayPicker(+el.dataset.d);break;
     case 'fs':U.filterS=el.dataset.v||null;render();break;

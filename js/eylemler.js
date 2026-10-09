@@ -16,7 +16,8 @@ export function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 export function setStart(d){S.start=dOnly(d);changed();}
 export function setTestInterval(n){S.testInterval=n;changed();}
 export function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-export function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+export function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.sessionNames={};S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+export function setSessionName(d,name){name=(name||'').trim();if(name)S.sessionNames[d]=name;else delete S.sessionNames[d];changed();}
 export function resetCfg(){S.cfg=mergeCfg();changed();}
 /* ── egzersiz düzenleme ── */
 export function logSched(id,oldD,newD){const now=Date.now(),o=new Set(oldD),n=new Set(newD);

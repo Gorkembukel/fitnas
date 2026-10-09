@@ -2,7 +2,7 @@
 // Yeni kalıcı alan: S + serialize + applyState + migrateV1 + eylemler.js/resetAll (bkz. /yeni-alan).
 import {Cloud,cloudPush} from './bulut.js';
 import {E,kCatalog} from './katalog.js';
-import {mergeCfg} from './sabitler.js';
+import {kSessions,mergeCfg} from './sabitler.js';
 import {render} from './ui/render.js';
 import {dOnly} from './yardimcilar.js';
 
@@ -10,11 +10,12 @@ import {dOnly} from './yardimcilar.js';
 export const KEY='antrenman_takip_v2';
 export const S={
   start:dOnly(new Date()), active:new Set(), logs:[], custom:[], signals:{}, metrics:[],
-  overrides:{}, maxes:[], testInterval:28, schedLog:[], oneoff:[], pain:{}, painLog:[], painAction:[], cfg:mergeCfg(), _idx:{},
+  overrides:{}, maxes:[], testInterval:28, schedLog:[], oneoff:[], pain:{}, painLog:[], painAction:[], cfg:mergeCfg(), sessionNames:{}, _idx:{},
   all(){return [...kCatalog.map(b=>this._idx[b.id]), ...this.custom.map(c=>this._idx[c.id])];},
   ex(id){return this._idx[id];},
   reindex(){this._idx={};for(const b of kCatalog)this._idx[b.id]=effective(b);for(const c of this.custom)this._idx[c.id]=c;},
 };
+export function sessionLabel(d){return S.sessionNames[d]||kSessions[d];}
 export function effective(base){
   const ov=S.overrides[base.id]; if(!ov)return base;
   return Object.assign({},base,{name:ov.name,note:ov.note,pattern:ov.pattern,unit:ov.unit,days:ov.days,
@@ -28,7 +29,7 @@ export function customToJ(e){return {id:e.id,def:defOf(e)};}
 export function customFromJ(j){const d=j.def;return E(j.id,d.name,{pattern:d.pattern,unit:d.unit,grp:'Özel',custom:true,
   muscles:d.muscles,systems:d.systems,days:d.days,targets:d.targets,rpe:d.rpe,step:d.step,impact:d.impact,halfRec:d.halfRec,note:d.note,tempo:d.tempo||'',recovery:d.recovery||''});}
 export function serialize(){return {start:S.start.toISOString(),active:[...S.active],logs:S.logs,metrics:S.metrics,
-  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,pain:S.pain,painLog:S.painLog,painAction:S.painAction,cfg:S.cfg,custom:S.custom.map(customToJ),
+  signals:S.signals,overrides:S.overrides,maxes:S.maxes,testInterval:S.testInterval,schedLog:S.schedLog,oneoff:S.oneoff,pain:S.pain,painLog:S.painLog,painAction:S.painAction,cfg:S.cfg,sessionNames:S.sessionNames,custom:S.custom.map(customToJ),
   updatedAt:S._updatedAt||Date.now()};}
 export function migrateTendon(){
   const tmap={squat:'tendonDiz',wallsit:'tendonDiz',wallpush:'tendonItme',chin:'tendonKol',pullNeg:'tendonKol',hang:'tendonKol',rdl1:'tendonKalca',sideplank:'tendonItme',wallhard:'tendonItme',bulgar:'tendonDiz',cossack:'tendonDiz',run:'tendonAsil',rope:'tendonAsil',nordic:'tendonKalca',pogo:'tendonAsil',archer:'tendonItme',clap:'tendonItme',carry:'tendonKol',pullup:'tendonKol'};
@@ -45,7 +46,7 @@ export function applyState(d){
   S.reindex();
   S.active=new Set(d.active&&d.active.length?d.active:defaultActive());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.oneoff=d.oneoff||[];S.pain=d.pain||{};S.painLog=d.painLog||[];S.painAction=d.painAction||[];S.cfg=mergeCfg(d.cfg);
+  S.maxes=d.maxes||[];S.testInterval=d.testInterval||28;S.schedLog=d.schedLog||[];S.oneoff=d.oneoff||[];S.pain=d.pain||{};S.painLog=d.painLog||[];S.painAction=d.painAction||[];S.cfg=mergeCfg(d.cfg);S.sessionNames=d.sessionNames||{};
   S._updatedAt=d.updatedAt||Date.now();
 }
 export function load(){
@@ -59,7 +60,7 @@ export function load(){
 export function migrateV1(d){
   S.start=d.start?dOnly(new Date(d.start)):dOnly(new Date());
   S.logs=d.logs||[];S.metrics=d.metrics||[];S.signals=d.signals||{};
-  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();
+  S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.sessionNames={};
   S.custom=(d.custom||[]).map(j=>{const muscles={},systems={};for(const n of (j.m||[]))muscles[n]=1;for(const n of (j.s||[]))systems[n]=1;
     const t={sets:j.sets,v:j.v};return E(j.id,j.name,{pattern:j.pattern||'Özel',unit:j.unit,grp:'Özel',custom:true,muscles,systems,days:j.days,targets:[t,{...t},{...t},{...t}],rpe:j.rpe});});
   S.reindex();

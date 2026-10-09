@@ -43,6 +43,3 @@ node .claude/skills/dogrula/verify.mjs
 - **`render …` başarısızsa:** Stack trace doğrudan `js/...:satır` gösterir.
 - Kullanıcıya her zaman geçen/başarısız sayısını ve başarısız olanları olduğu gibi bildir.
 - Bu test tarayıcıyı birebir taklit etmez. Büyük UI değişikliklerinde `npx serve .` ile gerçek tarayıcıda da bak.
-
-## Bilinen durum (2026-09-23)
-"Bilinmeyen anahtarlar → render Program #0" başarısız: `libWeekly` içinde `SINFO[s].label` guard'sız (`js/sayfalar/program.js`, `daySystems` sonucu). Düzeltilene kadar bu ✗ beklenen bir sonuç. Düzeltilince bu notu sil.

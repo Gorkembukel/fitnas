@@ -1,14 +1,15 @@
 // Program sekmesi: Haftalık | Öneriler | Egzersizler.
-import {S} from '../durum.js';
+import {S,sessionLabel} from '../durum.js';
+import {setSessionName} from '../eylemler.js';
 import {gapScore,muscleLoad,status,systemLoad} from '../mantik/analiz.js';
 import {oneoffIds,target,todayList,weekDate} from '../mantik/program.js';
 import {bestOf,prereqMet} from '../mantik/rekor.js';
 import {recHours,rpeFactor} from '../mantik/toparlanma.js';
-import {MINFO,M_ORDER,SINFO,S_ORDER,kDayNames,kDayShort,kGrpOrder,kSessions} from '../sabitler.js';
+import {MINFO,M_ORDER,SINFO,SYS_GROUPS,S_ORDER,kDayNames,kDayShort,kGrpOrder,kSessions} from '../sabitler.js';
 import {U} from '../ui/durum-ui.js';
 import {exTags,noteBox,sec,tag} from '../ui/html.js';
-import {openSheet} from '../ui/overlay.js';
-import {dOnly,dayKey,esc,fmt} from '../yardimcilar.js';
+import {closeOverlay,openSheet,overlay} from '../ui/overlay.js';
+import {dOnly,dayKey,esc,fmt,weekday} from '../yardimcilar.js';
 
 /* ══════════════ PROGRAM ══════════════ */
 export function renderLibrary(){
@@ -18,27 +19,70 @@ export function renderLibrary(){
     <button class="${U.libMode===2?'on':''}" data-act="libmode" data-v="2">≣ Egzersizler</button></div><div style="height:8px"></div>`;
   h+=U.libMode===0?libWeekly():U.libMode===1?libNext():libBrowse();return h;
 }
-export function daySystems(exs,d){const set=[];for(const e of exs){const t=target(e,weekDate(1,d));if(!t)continue;for(const s in e.systems)if(e.systems[s]>=1&&!set.includes(s))set.push(s);}return set;}
+const M_REGIONS=[];for(const m of M_ORDER)if(!M_REGIONS.includes(MINFO[m].region))M_REGIONS.push(MINFO[m].region);
+export function dayFootprint(exs,d){
+  const musc={},sys={};
+  for(const e of exs){const t=target(e,weekDate(1,d));if(!t)continue;
+    for(const m in e.muscles){const r=MINFO[m]&&MINFO[m].region;if(!r)continue;const w=e.muscles[m];if(musc[r]==null||musc[r]<w)musc[r]=w;}
+    for(const s in e.systems){const w=e.systems[s];if(sys[s]==null||sys[s]<w)sys[s]=w;}
+  }
+  return {musc,sys};
+}
+export function footprintChips(exs,d){
+  const {musc,sys}=dayFootprint(exs,d);
+  let h='';
+  for(const r of M_REGIONS)if(musc[r]!=null)h+=tag(r,'var(--onvar)',undefined,musc[r]<1);
+  const done={};
+  for(const s of S_ORDER){
+    if(sys[s]==null)continue;
+    const gi=SYS_GROUPS.findIndex(g=>g.members.includes(s));
+    if(gi>=0){
+      if(done[gi])continue;done[gi]=true;
+      const G=SYS_GROUPS[gi],w=Math.max(...G.members.filter(m=>sys[m]!=null).map(m=>sys[m]));
+      h+=tag(G.label,G.color,G.icon,w<1);
+      continue;
+    }
+    h+=tag(SINFO[s].label,SINFO[s].color,SINFO[s].icon,sys[s]<1);
+  }
+  return h;
+}
 export function libWeekly(){
-  let h=sec('Haftalık program','Bir egzersizi eklediğin/çıkardığın gün, tekrar eden haftalık şablona işlenir ve Bugün, Denge, İlerleme ile eşitlenir.');
-  h+=programAdvice();
+  let h=sec('Haftalık program','Günün başlığına dokunup genişlet; amaç etiketini ve egzersizleri oradan düzenle. Bir egzersizi eklediğin/çıkardığın gün, tekrar eden haftalık şablona işlenir ve Bugün, Denge, İlerleme ile eşitlenir.');
+  const todayWd=weekday(dOnly(new Date()));
   for(let d=1;d<=7;d++){
     const exs=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);
     let sets=0;for(const e of exs){const t=target(e,weekDate(1,d));sets+=t?t.sets:0;}
-    const sys=daySystems(exs,d);
-    h+=`<div class="card tight">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1"><div style="font-weight:600">${kDayNames[d-1]} <span class="muted tiny">· ${esc(kSessions[d])}</span></div>
-          <div class="muted tiny">${exs.length} egzersiz · ${sets} set</div></div>
-        <button class="text" data-act="addday" data-d="${d}">＋ Ekle</button></div>`;
-    if(exs.length)for(const e of exs){const t=target(e,weekDate(1,d));
-      h+=`<div class="mrow"><div style="flex:1;font-size:13.5px">${esc(e.name)} <span class="muted tiny">${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div>
-        <button class="iconbtn" data-act="rmday" data-id="${e.id}" data-d="${d}" style="width:30px;height:30px;font-size:17px" title="Bu günden çıkar">×</button></div>`;}
-    else h+=`<div class="muted small" style="padding:6px 2px">Boş gün — toparlanma veya hafif hareket.</div>`;
-    if(sys.length)h+=`<div class="tags" style="margin-top:6px">${sys.map(s=>tag(SINFO[s].label,SINFO[s].color,SINFO[s].icon)).join('')}</div>`;
-    h+=`</div>`;
+    const fp=footprintChips(exs,d);
+    h+=`<details class="ex"${d===todayWd?' open':''}>
+      <summary><div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1"><div style="font-weight:600">${kDayNames[d-1]} <span class="muted tiny">· ${esc(sessionLabel(d))}</span></div>
+            <div class="muted tiny">${exs.length} egzersiz · ${sets} set</div></div>
+          <span class="chev">⌄</span></div>
+        ${fp?`<div class="tags" style="margin-top:8px">${fp}</div>`:`<div class="muted small" style="margin-top:6px">Boş gün — toparlanma veya hafif hareket.</div>`}
+      </summary>
+      <div class="body">
+        <div style="text-align:right;margin-bottom:6px"><button class="text" data-act="editsession" data-d="${d}">✎ Amaç etiketini düzenle</button></div>
+        ${exs.length?exs.map(e=>{const t=target(e,weekDate(1,d));
+          return `<div class="mrow"><div style="flex:1;font-size:13.5px">${esc(e.name)} <span class="muted tiny">${t.sets}×${fmt(t.v)} ${esc(e.unit)}</span></div>
+            <button class="iconbtn" data-act="rmday" data-id="${e.id}" data-d="${d}" style="width:30px;height:30px;font-size:17px" title="Bu günden çıkar">×</button></div>`;}).join(''):
+          '<div class="muted small" style="padding:6px 2px 4px">Bu günde egzersiz yok.</div>'}
+        <div style="text-align:right;margin-top:6px"><button class="text" data-act="addday" data-d="${d}">＋ Ekle</button></div>
+      </div></details>`;
   }
+  h+=`<details class="ex"><summary><div style="font-weight:600">Program önerileri</div>
+      <div class="muted tiny">Sistem toparlanması, kalıp dengesi ve kas dağılımı uyarıları</div></summary>
+    <div class="body" style="padding-top:4px">${programAdvice()}</div></details>`;
   return h;
+}
+export function openSessionEditor(d){
+  const cur=sessionLabel(d),custom=S.sessionNames[d];
+  openSheet(`<div class="title-lg">${esc(kDayNames[d-1])} — amaç etiketi</div>
+    <div class="muted small" style="margin:8px 0 12px">Bu günün haftalık şablondaki amacını (ör. "Kuvvet A", "İp ve gölge boks") buradan değiştirebilirsin. Sadece görünümdür, hesaplamayı etkilemez.</div>
+    <label class="fld">Etiket</label><input type="text" id="sname" value="${esc(cur)}" maxlength="40">
+    <div style="height:12px"></div><button class="fill block" id="ssave">Kaydet</button>
+    ${custom?`<div style="text-align:center;margin-top:6px"><button class="text" id="sreset" style="color:var(--red)">Varsayılana döndür (${esc(kSessions[d])})</button></div>`:''}`);
+  overlay.querySelector('#ssave').onclick=()=>{setSessionName(d,overlay.querySelector('#sname').value);closeOverlay();};
+  const rb=overlay.querySelector('#sreset');if(rb)rb.onclick=()=>{setSessionName(d,'');closeOverlay();};
 }
 export function programAdvice(){
   const sched={};for(let d=1;d<=7;d++)sched[d]=S.all().filter(e=>S.active.has(e.id)&&e.days.includes(d)&&target(e,weekDate(1,d))!==null);

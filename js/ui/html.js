@@ -3,7 +3,7 @@ import {MINFO,SINFO} from '../sabitler.js';
 import {esc} from '../yardimcilar.js';
 
 /* ══════════════ HTML PARÇALARI ══════════════ */
-export function tag(text,color,icon){return `<span class="tag" style="color:${color};background:color-mix(in srgb,${color} 15%,transparent)">${icon?`<span class="em">${icon}</span>`:''}${esc(text)}</span>`;}
+export function tag(text,color,icon,aux){return `<span class="tag" style="color:${color};background:color-mix(in srgb,${color} 15%,transparent)${aux?';opacity:.55':''}">${icon?`<span class="em">${icon}</span>`:''}${esc(text)}</span>`;}
 export function exTags(e){let s='<div class="tags">';for(const m in e.muscles)if(e.muscles[m]>=1&&MINFO[m])s+=tag(MINFO[m].label,'var(--onvar)');
   for(const sy in e.systems)if(e.systems[sy]>=1&&SINFO[sy])s+=tag(SINFO[sy].label,SINFO[sy].color,SINFO[sy].icon);return s+'</div>';}
 export function sec(t,sub){return `<div class="sec"><div class="t">${esc(t)}</div>${sub?`<div class="s">${esc(sub)}</div>`:''}</div>`;}
