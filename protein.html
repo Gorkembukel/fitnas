@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Protein Paket Mutfağı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Familjen+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#f5f8f4; --bg-elevated:#ffffff; --text:#1b241c; --text-dim:#5c6b5e;
+  --border:#dbe4d7; --accent:#1f9d55; --accent-ink:#0d3d21; --accent-weak:#e4f3e9;
+  --warn:#9a5b16; --warn-weak:#fbe9d4;
+  --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.06);
+  --font-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --font-body:"Familjen Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#11150f; --bg-elevated:#1a221a; --text:#e9f1e6; --text-dim:#9bb09d;
+    --border:#2b362a; --accent:#3fcf7e; --accent-ink:#d6ffe6; --accent-weak:#1c3326;
+    --warn:#e3a458; --warn-weak:#3a2a16;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);overflow-x:hidden;}
+body{font-family:var(--font-body);font-size:15px;line-height:1.4;}
+button,input{font-family:inherit;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 16px 96px;}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.top h1{font-family:var(--font-display);font-weight:700;font-size:22px;margin:0;letter-spacing:.2px;}
+.gear{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:0 14px;height:40px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.gear:hover{border-color:var(--accent);}
+.panel{background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px;}
+.panel h2{margin:0 0 8px;font-size:16px;}
+.panel p{color:var(--text-dim);font-size:13px;margin:4px 0 10px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+.btn{background:var(--accent);color:#06240f;border:none;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;font-size:14px;text-decoration:none;display:inline-block;}
+.btn:hover{filter:brightness(1.05);}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.chip{background:var(--bg-elevated);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text);}
+.chip:hover{border-color:var(--accent);}
+.chip b{font-family:var(--font-display);color:var(--accent-ink);background:var(--accent-weak);border-radius:6px;padding:1px 6px;margin-left:6px;font-variant-numeric:tabular-nums;}
+.layout{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start;}
+@media (max-width:760px){.layout{grid-template-columns:1fr;} .wrap{padding-bottom:140px;}}
+.shelf{display:flex;flex-direction:column;gap:14px;}
+.group h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin:0 0 8px;}
+.ingrow{display:flex;align-items:center;gap:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px;}
+.ingrow.active{border-color:var(--accent);background:var(--accent-weak);}
+.ingrow .info{flex:1;min-width:0;}
+.ingrow .name{font-size:14px;font-weight:500;}
+.ingrow .sub{font-size:12px;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+.stepper{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.stepbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;cursor:pointer;line-height:1;}
+.stepbtn:hover{border-color:var(--accent);}
+.qty{width:56px;text-align:center;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:6px 2px;font-variant-numeric:tabular-nums;}
+.unit{font-size:12px;color:var(--text-dim);width:52px;flex-shrink:0;}
+.packageCard{position:sticky;top:16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+@media (max-width:760px){.packageCard{position:static;}}
+.pname{width:100%;border:none;background:transparent;font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text);padding:2px 0;margin-bottom:10px;border-bottom:1px dashed var(--border);}
+.bignum{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+.bignum .protein{font-family:var(--font-display);font-size:52px;font-weight:800;color:var(--accent-ink);background:var(--accent-weak);border-radius:10px;padding:0 10px;font-variant-numeric:tabular-nums;}
+.bignum .unit2{font-size:16px;color:var(--text-dim);}
+.meta{display:flex;gap:14px;color:var(--text-dim);font-size:13px;margin-bottom:12px;font-variant-numeric:tabular-nums;}
+.bar{position:relative;height:10px;border-radius:999px;background:var(--border);margin-bottom:6px;overflow:visible;}
+.bar .fill{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:var(--accent);transition:width .15s;}
+.bar .tick{position:absolute;top:-3px;width:2px;height:16px;background:var(--text-dim);}
+.status{font-size:13px;margin:10px 0;padding:8px 10px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);}
+.status.warn{background:var(--warn-weak);color:var(--warn);}
+.itemlist{list-style:none;margin:0 0 10px;padding:0;font-size:13px;}
+.itemlist li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
+.itemlist .nm{color:var(--text);flex:1;}
+.itemlist .val{color:var(--text-dim);white-space:nowrap;}
+.warnbox{background:var(--warn-weak);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:10px;}
+.dailyline{font-size:13px;color:var(--text-dim);margin-bottom:12px;font-variant-numeric:tabular-nums;}
+.cardbtns{display:flex;gap:8px;}
+.saved{margin-top:28px;}
+.saved h2{font-family:var(--font-display);font-size:18px;margin:0 0 10px;}
+.savedGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:10px;}
+.savedcard{background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:12px;}
+.savedcard .nm{font-weight:600;margin-bottom:4px;}
+.savedcard .num{font-variant-numeric:tabular-nums;color:var(--text-dim);font-size:13px;margin-bottom:6px;}
+.savedcard .ings{font-size:12px;color:var(--text-dim);margin-bottom:8px;min-height:2.4em;}
+.savedcard .btnrow{display:flex;gap:6px;}
+.savedcard .btnrow button{flex:1;padding:6px;font-size:12.5px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;}
+.savedcard .btnrow button:hover{border-color:var(--accent);}
+.empty{color:var(--text-dim);font-size:13px;padding:16px;text-align:center;border:1px dashed var(--border);border-radius:12px;}
+.note{color:var(--text-dim);font-size:12px;margin-top:6px;}
+.mobilebar{display:none;position:fixed;left:0;right:0;bottom:0;background:var(--bg-elevated);border-top:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-bottom));text-align:center;font-size:14px;z-index:30;box-shadow:0 -4px 12px rgba(0,0,0,.08);}
+.mobilebar b{font-family:var(--font-display);color:var(--accent-ink);background:var(--accent-weak);border-radius:6px;padding:1px 8px;margin-right:6px;font-variant-numeric:tabular-nums;}
+@media (max-width:760px){.mobilebar{display:block;}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,0);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;}
+@media (max-width:760px){.toast{bottom:84px;}}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Protein Paket Mutfağı</h1>
+    <button class="gear" data-act="toggle-settings" title="Ayarlar" aria-label="Ayarlar">Ayarlar</button>
+  </header>
+
+  <div id="settingsPanel" class="panel" hidden>
+    <h2>Firebase bağlantısı</h2>
+    <p id="cloudStatusText">Kontrol ediliyor…</p>
+    <div class="row"><a class="btn ghost" href="index.html">Ana sayfaya git</a></div>
+  </div>
+
+  <div class="presets" id="presets"></div>
+
+  <main class="layout">
+    <section class="shelf" id="shelf"></section>
+    <aside class="packageCard" id="packageCard"></aside>
+  </main>
+
+  <section class="saved">
+    <h2>Kayıtlı Paketlerim</h2>
+    <div id="savedGrid" class="savedGrid"></div>
+    <p class="note" id="savedNote"></p>
+  </section>
+</div>
+
+<div class="mobilebar" id="mobilebar"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---- malzeme verisi (değiştirme) ---- */
+const ING = [
+ {id:'yogurtYuksek',g:'Süt ürünleri',name:'Yüksek proteinli süzme yoğurt',unit:'g',base:100,protein:10,kcal:80,step:50,def:200},
+ {id:'yogurtKlasik',g:'Süt ürünleri',name:'Klasik süzme yoğurt',unit:'g',base:100,protein:7,kcal:120,step:50,def:200},
+ {id:'yogurtNormal',g:'Süt ürünleri',name:'Normal yoğurt',unit:'g',base:100,protein:3.7,kcal:63,step:50,def:200},
+ {id:'lor',g:'Süt ürünleri',name:'Lor peyniri',unit:'g',base:100,protein:12,kcal:95,step:25,def:100},
+ {id:'beyazPeynir',g:'Süt ürünleri',name:'Beyaz peynir',unit:'g',base:100,protein:16,kcal:260,step:10,def:50},
+ {id:'kasar',g:'Süt ürünleri',name:'Kaşar',unit:'g',base:100,protein:25,kcal:370,step:10,def:30},
+ {id:'kefirProteinli',g:'Süt ürünleri',name:'Proteinli kefir',unit:'şişe',base:1,protein:20,kcal:170,step:1,def:1},
+ {id:'kefir',g:'Süt ürünleri',name:'Kefir',unit:'ml',base:100,protein:3.4,kcal:60,step:50,def:250},
+ {id:'sut',g:'Süt ürünleri',name:'Süt',unit:'ml',base:100,protein:3.3,kcal:62,step:50,def:250},
+ {id:'yumurta',g:'Et, tavuk, balık, yumurta',name:'Yumurta (L)',unit:'adet',base:1,protein:6.3,kcal:75,step:1,def:2},
+ {id:'tavukGogsu',g:'Et, tavuk, balık, yumurta',name:'Tavuk göğsü, pişmiş',unit:'g',base:100,protein:31,kcal:165,step:20,def:120},
+ {id:'kiyma',g:'Et, tavuk, balık, yumurta',name:'Kıyma / et, pişmiş',unit:'g',base:100,protein:26,kcal:250,step:20,def:100},
+ {id:'ton',g:'Et, tavuk, balık, yumurta',name:'Ton balığı, süzülmüş',unit:'kutu',base:1,protein:27,kcal:200,step:1,def:1},
+ {id:'sardalya',g:'Et, tavuk, balık, yumurta',name:'Sardalya, süzülmüş',unit:'kutu',base:1,protein:22,kcal:190,step:1,def:1},
+ {id:'leblebi',g:'Bakliyat, kuruyemiş, tahıl',name:'Sarı leblebi',unit:'g',base:100,protein:20,kcal:370,step:10,def:50},
+ {id:'nohut',g:'Bakliyat, kuruyemiş, tahıl',name:'Nohut, haşlanmış',unit:'g',base:100,protein:8.9,kcal:164,step:50,def:150},
+ {id:'mercimek',g:'Bakliyat, kuruyemiş, tahıl',name:'Yeşil mercimek, haşlanmış',unit:'g',base:100,protein:9,kcal:116,step:50,def:150},
+ {id:'fistikEzmesi',g:'Bakliyat, kuruyemiş, tahıl',name:'Fıstık ezmesi',unit:'g',base:100,protein:25,kcal:590,step:8,def:16},
+ {id:'ceviz',g:'Bakliyat, kuruyemiş, tahıl',name:'Ceviz',unit:'g',base:100,protein:15,kcal:650,step:5,def:15},
+ {id:'yulaf',g:'Bakliyat, kuruyemiş, tahıl',name:'Yulaf ezmesi',unit:'g',base:100,protein:13,kcal:380,step:10,def:40},
+ {id:'ekmek',g:'Bakliyat, kuruyemiş, tahıl',name:'Tam buğday ekmeği',unit:'dilim',base:1,protein:2.7,kcal:80,step:1,def:1},
+ {id:'muz',g:'Tat vericiler',name:'Muz',unit:'adet',base:1,protein:1.3,kcal:105,step:1,def:1},
+ {id:'elma',g:'Tat vericiler',name:'Elma',unit:'adet',base:1,protein:0.3,kcal:95,step:1,def:1},
+ {id:'bal',g:'Tat vericiler',name:'Bal',unit:'tatlı kaşığı',base:1,protein:0,kcal:21,step:1,def:1},
+ {id:'yesillik',g:'Tat vericiler',name:'Salata / yeşillik',unit:'g',base:100,protein:1.2,kcal:20,step:50,def:150},
+];
+const ING_BY_ID = Object.fromEntries(ING.map(i=>[i.id,i]));
+const GROUP_ORDER = ['Süt ürünleri','Et, tavuk, balık, yumurta','Bakliyat, kuruyemiş, tahıl','Tat vericiler'];
+const PRESETS = [
+ {name:'Lor-yoğurt kasesi',items:{yogurtYuksek:200,lor:150,bal:1}},
+ {name:'Ton-yumurta tabağı',items:{ton:1,yumurta:2,yesillik:150}},
+ {name:'Kefir-leblebi paketi',items:{kefirProteinli:1,leblebi:50,yumurta:1}},
+ {name:'Tavuk kutusu',items:{tavukGogsu:120,yogurtNormal:50,yesillik:150}},
+];
+
+const state = {name:'',items:{}};
+
+function fmt(n,d){
+  return (n||0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function round1(n){return Math.round(n*10)/10;}
+function parseAmount(s){const v=parseFloat(String(s).replace(',','.'));return isNaN(v)?0:v;}
+
+function totals(items){
+  let protein=0,kcal=0;
+  for(const id in items){
+    const amt=items[id],ing=ING_BY_ID[id];
+    if(!ing)continue;
+    const ratio=amt/ing.base;
+    protein+=ratio*ing.protein; kcal+=ratio*ing.kcal;
+  }
+  return {protein,kcal};
+}
+
+function setQty(id,val){
+  val=Math.max(0,round1(val));
+  if(val<=0)delete state.items[id]; else state.items[id]=val;
+  renderAll();
+}
+function incr(id){
+  const ing=ING_BY_ID[id],cur=state.items[id]||0;
+  setQty(id,cur<=0?ing.def:cur+ing.step);
+}
+function decr(id){
+  const ing=ING_BY_ID[id],cur=state.items[id]||0;
+  setQty(id,cur-ing.step);
+}
+function loadPreset(items,name){
+  state.items={...items}; state.name=name||''; renderAll();
+}
+
+/* ---- render: malzeme rafı ---- */
+function renderShelf(){
+  const el=document.getElementById('shelf');
+  el.innerHTML=GROUP_ORDER.map(group=>{
+    const rows=ING.filter(i=>i.g===group).map(ing=>{
+      const amt=state.items[ing.id]||0;
+      return `<div class="ingrow${amt>0?' active':''}">
+        <div class="info">
+          <div class="name">${ing.name}</div>
+          <div class="sub">${ing.base} ${ing.unit}: ${fmt(ing.protein,1)} g protein · ${fmt(ing.kcal,0)} kcal</div>
+        </div>
+        <div class="stepper">
+          <button class="stepbtn" data-act="decr" data-id="${ing.id}" aria-label="Azalt">−</button>
+          <input class="qty" type="text" inputmode="decimal" data-act="qtyinput" data-id="${ing.id}" value="${amt>0?fmt(amt,amt%1?1:0):0}">
+          <button class="stepbtn" data-act="incr" data-id="${ing.id}" aria-label="Arttır">+</button>
+        </div>
+        <div class="unit">${ing.unit}</div>
+      </div>`;
+    }).join('');
+    return `<div class="group"><h3>${group}</h3>${rows}</div>`;
+  }).join('');
+}
+
+/* ---- render: paket kartı ---- */
+function renderCard(){
+  const {protein,kcal}=totals(state.items);
+  const eff=kcal>0?protein/kcal*100:0;
+  const hasItems=Object.keys(state.items).length>0;
+  const barPct=Math.min(100,protein/50*100);
+  let statusHtml,statusClass='';
+  if(!hasItems){statusHtml='Malzeme ekleyin';statusClass='warn';}
+  else if(protein<36){statusHtml=`Hedefe ${fmt(36-protein,0)} g kaldı`;statusClass='warn';}
+  else if(protein<=40){statusHtml='Tam hedefte: 36–40 g';}
+  else{statusHtml='Hedefin üstünde, iki paket yeterli olur';}
+
+  const items=ING.filter(i=>state.items[i.id]>0).map(ing=>{
+    const amt=state.items[ing.id],ratio=amt/ing.base;
+    return `<li><span class="nm">${fmt(amt,amt%1?1:0)} ${ing.unit} ${ing.name}</span><span class="val">${fmt(ratio*ing.protein,1)} g · ${fmt(ratio*ing.kcal,0)} kcal</span></li>`;
+  }).join('') || '<li><span class="nm">Henüz malzeme yok</span></li>';
+
+  const tunaWarn=(state.items.ton>0)?'<div class="warnbox">Ton balığı içeriyor: haftada en fazla 2–3 kez.</div>':'';
+
+  document.getElementById('packageCard').innerHTML=`
+    <input class="pname" id="pname" placeholder="Paket adı" value="${(state.name||'').replace(/"/g,'&quot;')}">
+    <div class="bignum"><span class="protein">${fmt(protein,0)}</span><span class="unit2">g protein</span></div>
+    <div class="meta"><span>${fmt(kcal,0)} kcal</span><span>${fmt(eff,1)} g/100kcal</span></div>
+    <div class="bar"><div class="fill" style="width:${barPct}%"></div><div class="tick" style="left:72%"></div><div class="tick" style="left:80%"></div></div>
+    <div class="status${statusClass?' '+statusClass:''}">${statusHtml}</div>
+    <ul class="itemlist">${items}</ul>
+    ${tunaWarn}
+    <div class="dailyline">Bu paketten günde 2 tane: ${fmt(protein*2,0)} g protein, ${fmt(kcal*2,0)} kcal</div>
+    <div class="cardbtns">
+      <button class="btn" data-act="save-pkg">Paketi kaydet</button>
+      <button class="btn ghost" data-act="clear-pkg">Temizle</button>
+    </div>`;
+  document.getElementById('mobilebar').innerHTML=`<b>${fmt(protein,0)} g</b>protein · ${fmt(kcal,0)} kcal`;
+}
+
+function renderPresets(){
+  document.getElementById('presets').innerHTML=
+    PRESETS.map((p,i)=>{const t=totals(p.items);return `<button class="chip" data-act="load-preset" data-i="${i}">${p.name}<b>${fmt(t.protein,0)} g</b></button>`;}).join('')+
+    `<button class="chip" data-act="load-empty">Boş başla</button>`;
+}
+
+function renderAll(){renderShelf();renderCard();}
+
+/* ---- Firebase: aynı 'fb_config' anahtarı fitnas (index.html) ile paylaşılır,
+   böylece orada girilen hesap buradaki pakette de otomatik kullanılır ---- */
+const CFGKEY='fb_config';
+const Cloud={app:null,auth:null,db:null,user:null,unsub:null};
+
+function cfgGet(){try{const s=localStorage.getItem(CFGKEY);return s?JSON.parse(s):null;}catch(e){return null;}}
+function fbErr(e){
+  const c=(e&&e.code)||'';
+  if(c.includes('permission-denied'))return 'Yetki hatası. Firestore kurallarını kontrol et.';
+  if(c.includes('unavailable')||c.includes('network'))return 'Ağ hatası. İnternet bağlantısını kontrol et.';
+  return (e&&e.message)||'Hata';
+}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* Firestore kuralları (Firebase Console → Firestore Database → Rules):
+   match /users/{uid}/proteinPaketleri/{id} {
+     allow read, write: if request.auth != null && request.auth.uid == uid;
+   }
+*/
+function cloudInit(){
+  const cfg=cfgGet();
+  const panel=document.getElementById('settingsPanel');
+  const statusText=document.getElementById('cloudStatusText');
+  if(!cfg){
+    statusText.textContent='Firebase bağlantısı yok. Ana sayfadan (index.html) bağlan; buradaki paket kaydı otomatik çalışacak.';
+    panel.hidden=false;
+    renderSavedEmpty('Önce ana sayfadan Firebase bağlantısını kur.');
+    return;
+  }
+  try{
+    Cloud.app=Cloud.app||firebase.initializeApp(cfg);
+    Cloud.auth=firebase.auth();Cloud.db=firebase.firestore();
+    Cloud.auth.onAuthStateChanged(u=>{
+      Cloud.user=u;
+      if(Cloud.unsub){Cloud.unsub();Cloud.unsub=null;}
+      panel.hidden=!!u;
+      if(u)subscribePackages();
+      else{
+        statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
+        renderSavedEmpty('Önce ana sayfadan giriş yap.');
+      }
+    });
+  }catch(e){statusText.textContent='Firebase bağlantı hatası: '+e.message;panel.hidden=false;}
+}
+function subscribePackages(){
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('proteinPaketleri').orderBy('updatedAt','desc');
+  Cloud.unsub=ref.onSnapshot(snap=>{
+    const docs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    savedCache=docs;
+    renderSaved(docs);
+  },err=>showToast('Senkron hatası: '+fbErr(err)));
+}
+function renderSaved(docs){
+  const grid=document.getElementById('savedGrid');
+  document.getElementById('savedNote').textContent='Firebase hesabınıza bağlı olarak saklanır; aynı hesapla başka bir cihazdan giriş yaparsanız paketleriniz orada da görünür.';
+  if(!docs.length){grid.innerHTML='';renderSavedEmpty('Henüz kaydedilmiş paket yok. Bir paket oluşturup “Paketi kaydet”e bas.');return;}
+  grid.innerHTML=docs.map(d=>{
+    const names=Object.keys(d.items||{}).map(id=>ING_BY_ID[id]?.name).filter(Boolean).join(', ');
+    return `<div class="savedcard">
+      <div class="nm">${d.name||'(adsız paket)'}</div>
+      <div class="num">${fmt(d.protein,0)} g protein · ${fmt(d.kcal,0)} kcal</div>
+      <div class="ings">${names}</div>
+      <div class="btnrow">
+        <button data-act="open-pkg" data-id="${d.id}">Aç</button>
+        <button data-act="del-pkg" data-id="${d.id}">Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderSavedEmpty(msg){
+  document.getElementById('savedGrid').innerHTML=`<div class="empty">${msg}</div>`;
+}
+let savedCache=[];
+function openSaved(id){
+  const d=savedCache.find(x=>x.id===id); if(!d)return;
+  loadPreset(d.items,d.name); document.querySelector('.layout').scrollIntoView({behavior:'smooth'});
+}
+function deleteSaved(id){
+  Cloud.db.collection('users').doc(Cloud.user.uid).collection('proteinPaketleri').doc(id).delete()
+    .then(()=>showToast('Paket silindi')).catch(e=>showToast('Silinemedi: '+fbErr(e)));
+}
+function savePackage(){
+  if(!Cloud.user){document.getElementById('settingsPanel').hidden=false;showToast('Önce ana sayfadan giriş yap');return;}
+  const {protein,kcal}=totals(state.items);
+  const name=(state.name||'').trim()||'Adsız paket';
+  const col=Cloud.db.collection('users').doc(Cloud.user.uid).collection('proteinPaketleri');
+  col.where('name','==',name).get().then(snap=>{
+    const data={name,items:{...state.items},protein,kcal,updatedAt:Date.now()};
+    const existing=snap.docs[0];
+    const op=existing?col.doc(existing.id).set(data):col.add(data);
+    op.then(()=>showToast(existing?'Paket güncellendi':'Paket kaydedildi'))
+      .catch(e=>showToast('Kaydedilemedi: '+fbErr(e)));
+  }).catch(e=>showToast('Kaydedilemedi: '+fbErr(e)));
+}
+
+/* ---- olaylar ---- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const act=b.dataset.act,id=b.dataset.id;
+  if(act==='toggle-settings')document.getElementById('settingsPanel').toggleAttribute('hidden');
+  else if(act==='incr')incr(id);
+  else if(act==='decr')decr(id);
+  else if(act==='load-preset'){const p=PRESETS[+b.dataset.i];loadPreset(p.items,p.name);}
+  else if(act==='load-empty')loadPreset({},'');
+  else if(act==='save-pkg')savePackage();
+  else if(act==='clear-pkg')loadPreset({},'');
+  else if(act==='open-pkg')openSaved(id);
+  else if(act==='del-pkg')deleteSaved(id);
+});
+document.addEventListener('input',e=>{
+  if(e.target.matches('[data-act="qtyinput"]')){
+    /* renderShelf() değil: tam raf yeniden çizilirse input focus'u kaybolur
+       (her tuş vuruşunda innerHTML değişir). Sadece kartı güncelle. */
+    const id=e.target.dataset.id,val=Math.max(0,round1(parseAmount(e.target.value)));
+    if(val<=0)delete state.items[id]; else state.items[id]=val;
+    e.target.closest('.ingrow').classList.toggle('active',val>0);
+    renderCard();
+  }
+  else if(e.target.id==='pname')state.name=e.target.value;
+});
+
+loadPreset(PRESETS[0].items,PRESETS[0].name);
+renderPresets();
+cloudInit();
+</script>
+</body>
+</html>
