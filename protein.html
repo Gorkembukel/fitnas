@@ -14,7 +14,7 @@
 :root{
   --bg:#f5f8f4; --bg-elevated:#ffffff; --text:#1b241c; --text-dim:#5c6b5e;
   --border:#dbe4d7; --accent:#1f9d55; --accent-ink:#0d3d21; --accent-weak:#e4f3e9;
-  --warn:#9a5b16; --warn-weak:#fbe9d4; --danger:#b23a2e; --danger-weak:#fbe2de;
+  --warn:#9a5b16; --warn-weak:#fbe9d4;
   --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.06);
   --font-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
   --font-body:"Familjen Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -23,7 +23,7 @@
   :root{
     --bg:#11150f; --bg-elevated:#1a221a; --text:#e9f1e6; --text-dim:#9bb09d;
     --border:#2b362a; --accent:#3fcf7e; --accent-ink:#d6ffe6; --accent-weak:#1c3326;
-    --warn:#e3a458; --warn-weak:#3a2a16; --danger:#e3756a; --danger-weak:#3a2420;
+    --warn:#e3a458; --warn-weak:#3a2a16;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.45);
   }
 }
@@ -40,16 +40,10 @@ button,input{font-family:inherit;}
 .panel{background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px;}
 .panel h2{margin:0 0 8px;font-size:16px;}
 .panel p{color:var(--text-dim);font-size:13px;margin:4px 0 10px;}
-.panel textarea{width:100%;min-height:90px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);padding:10px;font-family:monospace;font-size:12.5px;resize:vertical;}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-.btn{background:var(--accent);color:#06240f;border:none;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;font-size:14px;}
+.btn{background:var(--accent);color:#06240f;border:none;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;font-size:14px;text-decoration:none;display:inline-block;}
 .btn:hover{filter:brightness(1.05);}
 .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
-.btn.danger{background:var(--danger);color:#fff;}
-.field{flex:1;min-width:140px;display:flex;flex-direction:column;gap:4px;}
-.field label{font-size:12px;color:var(--text-dim);}
-.field input{border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);padding:8px 10px;font-size:14px;}
-.authstatus{font-size:13px;color:var(--text-dim);}
 .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
 .chip{background:var(--bg-elevated);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text);}
 .chip:hover{border-color:var(--accent);}
@@ -115,25 +109,9 @@ button,input{font-family:inherit;}
   </header>
 
   <div id="settingsPanel" class="panel" hidden>
-    <h2>Ayarlar — Firebase bağlantısı</h2>
-    <div id="cfgForm">
-      <p>Firebase Console → Proje Ayarları → Web uygulaması → SDK yapılandırma nesnesini buraya yapıştır. Firestore'u (Native mode) ve Authentication → E-posta/Şifre girişini o projede etkinleştirmen gerekir.</p>
-      <textarea id="cfgInput" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea>
-      <div class="row"><button class="btn" data-act="save-cfg">Kaydet</button></div>
-    </div>
-    <div id="authForm" hidden>
-      <p id="authStatusText" class="authstatus"></p>
-      <div class="row" id="authFields">
-        <div class="field"><label for="authEmail">E-posta</label><input id="authEmail" type="email" autocomplete="email"></div>
-        <div class="field"><label for="authPw">Şifre</label><input id="authPw" type="password" autocomplete="current-password"></div>
-      </div>
-      <div class="row">
-        <button class="btn" data-act="signin">Giriş yap</button>
-        <button class="btn ghost" data-act="signup">Kayıt ol</button>
-        <button class="btn ghost" data-act="signout" id="signoutBtn" hidden>Çıkış yap</button>
-        <button class="btn ghost" data-act="forget-cfg">Bağlantıyı unut</button>
-      </div>
-    </div>
+    <h2>Firebase bağlantısı</h2>
+    <p id="cloudStatusText">Kontrol ediliyor…</p>
+    <div class="row"><a class="btn ghost" href="index.html">Ana sayfaya git</a></div>
   </div>
 
   <div class="presets" id="presets"></div>
@@ -299,20 +277,10 @@ const CFGKEY='fb_config';
 const Cloud={app:null,auth:null,db:null,user:null,unsub:null};
 
 function cfgGet(){try{const s=localStorage.getItem(CFGKEY);return s?JSON.parse(s):null;}catch(e){return null;}}
-function cfgParse(txt){
-  let s=(txt||'').trim();const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a>=0&&b>a)s=s.slice(a,b+1);
-  try{return JSON.parse(s);}catch(e){}
-  try{return Function('return ('+s+')')();}catch(e){}
-  return null;
-}
 function fbErr(e){
   const c=(e&&e.code)||'';
-  if(c.includes('email-already-in-use'))return 'Bu e-posta zaten kayıtlı. Giriş yap.';
-  if(c.includes('invalid-email'))return 'Geçersiz e-posta.';
-  if(c.includes('weak-password'))return 'Şifre en az 6 karakter olmalı.';
-  if(c.includes('wrong-password')||c.includes('invalid-credential'))return 'E-posta veya şifre hatalı.';
-  if(c.includes('user-not-found'))return 'Kullanıcı bulunamadı. Önce kayıt ol.';
-  if(c.includes('unauthorized-domain'))return 'Bu alan adı Firebase Authentication → Ayarlar → Yetkili alan adlarına eklenmemiş.';
+  if(c.includes('permission-denied'))return 'Yetki hatası. Firestore kurallarını kontrol et.';
+  if(c.includes('unavailable')||c.includes('network'))return 'Ağ hatası. İnternet bağlantısını kontrol et.';
   return (e&&e.message)||'Hata';
 }
 function showToast(msg){
@@ -328,24 +296,27 @@ function showToast(msg){
 function cloudInit(){
   const cfg=cfgGet();
   const panel=document.getElementById('settingsPanel');
-  const cfgForm=document.getElementById('cfgForm'),authForm=document.getElementById('authForm');
-  if(!cfg){panel.hidden=false;cfgForm.hidden=false;authForm.hidden=true;renderSavedEmpty('Devam etmek için önce Firebase bağlantısını ayarla.');return;}
-  cfgForm.hidden=true;authForm.hidden=false;
+  const statusText=document.getElementById('cloudStatusText');
+  if(!cfg){
+    statusText.textContent='Firebase bağlantısı yok. Ana sayfadan (index.html) bağlan; buradaki paket kaydı otomatik çalışacak.';
+    panel.hidden=false;
+    renderSavedEmpty('Önce ana sayfadan Firebase bağlantısını kur.');
+    return;
+  }
   try{
     Cloud.app=Cloud.app||firebase.initializeApp(cfg);
     Cloud.auth=firebase.auth();Cloud.db=firebase.firestore();
     Cloud.auth.onAuthStateChanged(u=>{
       Cloud.user=u;
       if(Cloud.unsub){Cloud.unsub();Cloud.unsub=null;}
-      document.getElementById('signoutBtn').hidden=!u;
-      document.getElementById('authStatusText').textContent=u?('Giriş yapıldı: '+u.email):'Paketleri kaydetmek için giriş yap veya kayıt ol.';
-      document.getElementById('authFields').style.display=u?'none':'flex';
-      document.querySelector('[data-act="signin"]').hidden=!!u;
-      document.querySelector('[data-act="signup"]').hidden=!!u;
       panel.hidden=!!u;
-      if(u)subscribePackages(); else renderSavedEmpty('Paketleri kaydetmek için giriş yap veya kayıt ol.');
+      if(u)subscribePackages();
+      else{
+        statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
+        renderSavedEmpty('Önce ana sayfadan giriş yap.');
+      }
     });
-  }catch(e){showToast('Firebase bağlantı hatası: '+e.message);}
+  }catch(e){statusText.textContent='Firebase bağlantı hatası: '+e.message;panel.hidden=false;}
 }
 function subscribePackages(){
   const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('proteinPaketleri').orderBy('updatedAt','desc');
@@ -385,7 +356,7 @@ function deleteSaved(id){
     .then(()=>showToast('Paket silindi')).catch(e=>showToast('Silinemedi: '+fbErr(e)));
 }
 function savePackage(){
-  if(!Cloud.user){document.getElementById('settingsPanel').hidden=false;showToast('Önce giriş yap');return;}
+  if(!Cloud.user){document.getElementById('settingsPanel').hidden=false;showToast('Önce ana sayfadan giriş yap');return;}
   const {protein,kcal}=totals(state.items);
   const name=(state.name||'').trim()||'Adsız paket';
   const col=Cloud.db.collection('users').doc(Cloud.user.uid).collection('proteinPaketleri');
@@ -403,20 +374,6 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]'); if(!b)return;
   const act=b.dataset.act,id=b.dataset.id;
   if(act==='toggle-settings')document.getElementById('settingsPanel').toggleAttribute('hidden');
-  else if(act==='save-cfg'){
-    const cfg=cfgParse(document.getElementById('cfgInput').value);
-    if(!cfg||!cfg.apiKey||!cfg.projectId){showToast('Config okunamadı. apiKey ve projectId içeren nesneyi yapıştır.');return;}
-    try{localStorage.setItem(CFGKEY,JSON.stringify(cfg));}catch(e){}
-    location.reload();
-  }
-  else if(act==='forget-cfg'){try{localStorage.removeItem(CFGKEY);}catch(e){}location.reload();}
-  else if(act==='signin'||act==='signup'){
-    const email=document.getElementById('authEmail').value.trim(),pw=document.getElementById('authPw').value;
-    if(!email||!pw){showToast('E-posta ve şifre gerekli');return;}
-    const p=act==='signup'?Cloud.auth.createUserWithEmailAndPassword(email,pw):Cloud.auth.signInWithEmailAndPassword(email,pw);
-    p.catch(err=>showToast(fbErr(err)));
-  }
-  else if(act==='signout')Cloud.auth.signOut();
   else if(act==='incr')incr(id);
   else if(act==='decr')decr(id);
   else if(act==='load-preset'){const p=PRESETS[+b.dataset.i];loadPreset(p.items,p.name);}
@@ -427,7 +384,14 @@ document.addEventListener('click',e=>{
   else if(act==='del-pkg')deleteSaved(id);
 });
 document.addEventListener('input',e=>{
-  if(e.target.matches('[data-act="qtyinput"]'))setQty(e.target.dataset.id,parseAmount(e.target.value));
+  if(e.target.matches('[data-act="qtyinput"]')){
+    /* renderShelf() değil: tam raf yeniden çizilirse input focus'u kaybolur
+       (her tuş vuruşunda innerHTML değişir). Sadece kartı güncelle. */
+    const id=e.target.dataset.id,val=Math.max(0,round1(parseAmount(e.target.value)));
+    if(val<=0)delete state.items[id]; else state.items[id]=val;
+    e.target.closest('.ingrow').classList.toggle('active',val>0);
+    renderCard();
+  }
   else if(e.target.id==='pname')state.name=e.target.value;
 });
 

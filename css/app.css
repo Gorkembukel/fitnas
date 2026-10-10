@@ -29,6 +29,7 @@ header{display:flex;align-items:center;gap:8px;padding:14px 16px;padding-top:cal
 header h1{font-size:22px;font-weight:600;margin:0;flex:1;letter-spacing:.2px}
 .iconbtn{border:none;background:transparent;color:var(--onsurf);font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:color-mix(in srgb,var(--onsurf) 8%,transparent)}
+.navlink{font-size:13px;color:var(--onvar);text-decoration:none;padding:8px 12px;border-radius:999px;background:var(--surfhi);white-space:nowrap}
 #content{flex:1;overflow-y:auto;padding:0 16px 96px;-webkit-overflow-scrolling:touch}
 nav{display:flex;background:var(--surface);border-top:1px solid var(--divider);flex:none;
   padding-bottom:env(safe-area-inset-bottom,0px);position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto}
