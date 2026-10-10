@@ -310,8 +310,10 @@ function cloudInit(){
       Cloud.user=u;
       if(Cloud.unsub){Cloud.unsub();Cloud.unsub=null;}
       panel.hidden=!!u;
-      if(u)subscribePackages();
-      else{
+      if(u){
+        statusText.textContent='Bağlı: '+(u.email||u.uid);
+        subscribePackages();
+      }else{
         statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
         renderSavedEmpty('Önce ana sayfadan giriş yap.');
       }
