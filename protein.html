@@ -133,6 +133,8 @@ button,input,select{font-family:inherit;}
 .calday .dk{color:var(--text-dim);font-size:10px;font-variant-numeric:tabular-nums;}
 .calday.empty{visibility:hidden;cursor:default;}
 .dayDetail{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
+.bar.over .fill{background:var(--warn);}
+.quickadd{margin:12px 0;padding-top:10px;border-top:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -370,9 +372,10 @@ function renderPresets(){
 function renderAll(){renderShelf();renderCard();}
 
 /* ---- günlük kcal/protein takibi + takvim ---- */
-const LOGKEY='protein_gunluk_v1',GOALKEY='protein_hedef_v1';
+const LOGKEY='protein_gunluk_v1',GOALKEY='protein_hedef_v1',KCALGOALKEY='protein_kcal_hedef_v1';
 let gunlukLog=loadGunlukLocal();
 let proteinHedef=Number(localStorage.getItem(GOALKEY))||140;
+let kcalHedef=Number(localStorage.getItem(KCALGOALKEY))||2000;
 let calState=(()=>{const d=new Date();return{y:d.getFullYear(),m:d.getMonth()};})();
 let calSecili=null;
 
@@ -385,6 +388,24 @@ function setGoal(v){
   proteinHedef=Math.max(0,v||0);
   try{localStorage.setItem(GOALKEY,String(proteinHedef));}catch(e){}
   renderToday();
+}
+function setKcalGoal(v){
+  kcalHedef=Math.max(0,v||0);
+  try{localStorage.setItem(KCALGOALKEY,String(kcalHedef));}catch(e){}
+  renderToday();
+}
+function quickAddToday(){
+  const protein=parseAmount(document.getElementById('qaProtein').value);
+  const kcal=parseAmount(document.getElementById('qaKcal').value);
+  if(protein<=0&&kcal<=0){showToast('Protein ya da kcal gir');return;}
+  const name=document.getElementById('qaName').value.trim()||'Hızlı giriş';
+  const key=gunKey();
+  const entry={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),ts:Date.now(),name,protein,kcal,cost:0};
+  gunlukLog[key]=(gunlukLog[key]||[]).concat(entry);
+  saveGunlukLocal();pushGunlukCloud(key);
+  renderToday();
+  if(!document.getElementById('calendarPanel').hidden)renderCalendar();
+  showToast('Bugüne eklendi');
 }
 function logToday(){
   if(!Object.keys(state.items).length){showToast('Önce malzeme ekleyin');return;}
@@ -425,19 +446,40 @@ function renderToday(){
   const key=gunKey();
   const {protein,kcal}=gunToplam(key);
   const list=(gunlukLog[key]||[]).slice().sort((a,b)=>a.ts-b.ts);
+
   const pct=proteinHedef>0?Math.min(100,protein/proteinHedef*100):0;
   const kalan=proteinHedef-protein;
   let durum;
   if(!list.length)durum='Bugün henüz bir şey eklenmedi.';
-  else if(kalan>0)durum=`Hedefe ${fmt(kalan,0)} g kaldı — takviye düşünebilirsin.`;
+  else if(kalan>0)durum=`Proteinde hedefe ${fmt(kalan,0)} g kaldı — takviye düşünebilirsin.`;
   else durum='Günlük protein hedefine ulaştın.';
+
+  let kcalBlock='';
+  if(kcalHedef>0){
+    const kcalPct=Math.min(100,kcal/kcalHedef*100);
+    const kcalFark=kcalHedef-kcal;
+    const over=kcal>kcalHedef;
+    const kcalDurum=over?`Kalori hedefini ${fmt(-kcalFark,0)} kcal aştın.`:`Kaloride hedefe ${fmt(kcalFark,0)} kcal kaldı.`;
+    kcalBlock=`
+    <div class="bar${over?' over':''}"><div class="fill" style="width:${kcalPct}%"></div></div>
+    <div class="status${over?' warn':''}">${kcalDurum}</div>`;
+  }
+
   const items=list.map(en=>`<li><span class="enm"><span class="t">${new Date(en.ts).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>${esc(en.name)}</span><span class="eval">${fmt(en.protein,1)} g · ${fmt(en.kcal,0)} kcal<button class="silBtn" data-act="del-entry" data-key="${key}" data-eid="${en.id}" title="Kaydı sil">×</button></span></li>`).join('');
+
   document.getElementById('todayCard').innerHTML=`
     <h2>Bugün</h2>
     <div class="todayNums"><span class="big">${fmt(protein,0)}</span><span class="unit2">g protein</span><span class="kcalnum">${fmt(kcal,0)} kcal</span></div>
-    <div class="goalRow">Günlük hedef:<input type="text" inputmode="decimal" id="goalInput" value="${fmt(proteinHedef,0)}"> g protein</div>
+    <div class="goalRow">Protein hedefi:<input type="text" inputmode="decimal" id="goalInput" value="${fmt(proteinHedef,0)}"> g · Kalori hedefi:<input type="text" inputmode="decimal" id="kcalGoalInput" value="${fmt(kcalHedef,0)}"> kcal</div>
     <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
     <div class="status${kalan>0&&list.length?' warn':''}">${durum}</div>
+    ${kcalBlock}
+    <div class="quickadd row">
+      <div class="field2"><label for="qaName">Ad (opsiyonel)</label><input id="qaName" type="text" placeholder="örn. Takviye"></div>
+      <div class="field2"><label for="qaProtein">Protein (g)</label><input id="qaProtein" type="text" inputmode="decimal"></div>
+      <div class="field2"><label for="qaKcal">Kcal</label><input id="qaKcal" type="text" inputmode="decimal"></div>
+    </div>
+    <div class="row"><button class="btn" data-act="quick-add">Bugüne ekle</button></div>
     <ul class="entrylist">${items}</ul>`;
 }
 
@@ -656,6 +698,7 @@ document.addEventListener('click',e=>{
   else if(act==='add-ing')addIngredient();
   else if(act==='del-ing')deleteIngredient(id);
   else if(act==='log-today')logToday();
+  else if(act==='quick-add')quickAddToday();
   else if(act==='del-entry')removeEntry(b.dataset.key,b.dataset.eid);
   else if(act==='toggle-calendar'){
     const p=document.getElementById('calendarPanel');p.toggleAttribute('hidden');
@@ -679,6 +722,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   if(e.target.matches('[data-act="priceinput"]'))savePrice(e.target.dataset.id,parseAmount(e.target.value));
   else if(e.target.id==='goalInput')setGoal(parseAmount(e.target.value));
+  else if(e.target.id==='kcalGoalInput')setKcalGoal(parseAmount(e.target.value));
 });
 
 loadPreset(PRESETS[0].items,PRESETS[0].name);
