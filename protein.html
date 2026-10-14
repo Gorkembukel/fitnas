@@ -431,6 +431,29 @@ function pushGunlukCloud(key){
   const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog').doc(key);
   (entries.length?ref.set({entries}):ref.delete()).catch(e=>showToast('Günlük senkron hatası: '+fbErr(e)));
 }
+function mergeGunlukOnLogin(){
+  /* girişten önce offline/yerel olarak birikmiş günler Firestore'da yoksa
+     veya eksikse yükler; onSnapshot'ın ilk (boş olabilecek) kopyası yerel
+     geçmişin üzerine yazıp silmesin diye abone olmadan önce çalışır. */
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog');
+  return ref.get().then(snap=>{
+    const cloud={};
+    snap.docs.forEach(d=>{const data=d.data();if(data.entries)cloud[d.id]=data.entries;});
+    const writes=[];
+    for(const key in gunlukLog){
+      const localEntries=gunlukLog[key]||[];
+      const cloudEntries=cloud[key]||[];
+      if(!localEntries.length)continue;
+      if(!cloudEntries.length){writes.push(ref.doc(key).set({entries:localEntries}));continue;}
+      const byId={};
+      cloudEntries.forEach(e=>byId[e.id]=e);
+      let changed=false;
+      localEntries.forEach(e=>{if(!byId[e.id]){byId[e.id]=e;changed=true;}});
+      if(changed)writes.push(ref.doc(key).set({entries:Object.values(byId).sort((a,b)=>a.ts-b.ts)}));
+    }
+    return Promise.all(writes);
+  }).catch(e=>showToast('Günlük senkron hatası: '+fbErr(e)));
+}
 function subscribeGunluk(){
   const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog');
   Cloud.unsubLog=ref.onSnapshot(snap=>{
@@ -560,7 +583,8 @@ function cloudInit(){
       panel.hidden=!!u;
       if(u){
         statusText.textContent='Bağlı: '+(u.email||u.uid);
-        subscribePackages();subscribeCustomIngredients();subscribePrices();subscribeGunluk();
+        subscribePackages();subscribeCustomIngredients();subscribePrices();
+        mergeGunlukOnLogin().then(subscribeGunluk);
       }else{
         statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
         savedCache=[];customIng=[];priceOverrides={};rebuildCatalog();renderAll();renderPresets();
