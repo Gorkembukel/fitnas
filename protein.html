@@ -106,6 +106,35 @@ button,input,select{font-family:inherit;}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,0);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;}
 @media (max-width:760px){.toast{bottom:84px;}}
 .toast.show{opacity:1;}
+.todayCard{background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px;}
+.todayCard h2{margin:0 0 4px;font-size:16px;}
+.todayNums{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:8px 0;}
+.todayNums .big{font-family:var(--font-display);font-size:40px;font-weight:800;color:var(--accent-ink);background:var(--accent-weak);border-radius:10px;padding:0 10px;font-variant-numeric:tabular-nums;}
+.todayNums .unit2{font-size:14px;color:var(--text-dim);}
+.todayNums .kcalnum{font-size:15px;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+.goalRow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:8px;}
+.goalRow input{width:56px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);padding:3px 5px;font-size:12px;font-variant-numeric:tabular-nums;}
+.entrylist{list-style:none;margin:8px 0 0;padding:0;font-size:13px;}
+.entrylist li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.entrylist .enm{flex:1;min-width:0;}
+.entrylist .enm .t{color:var(--text-dim);font-size:11px;margin-right:6px;}
+.entrylist .eval{color:var(--text-dim);font-variant-numeric:tabular-nums;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.calnav b{font-size:14px;}
+.calnav button{background:var(--bg);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--text);font-size:14px;}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.calgrid .dow{text-align:center;font-size:11px;color:var(--text-dim);padding-bottom:4px;}
+.calday{aspect-ratio:1;border:1px solid var(--border);border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:2px;background:var(--bg);font-size:11px;color:var(--text);}
+.calday:hover{border-color:var(--accent);}
+.calday.has{background:var(--accent-weak);border-color:var(--accent);}
+.calday.sel{outline:2px solid var(--accent);}
+.calday .dnum{font-weight:600;}
+.calday .dp{color:var(--accent-ink);font-variant-numeric:tabular-nums;}
+.calday .dk{color:var(--text-dim);font-size:10px;font-variant-numeric:tabular-nums;}
+.calday.empty{visibility:hidden;cursor:default;}
+.dayDetail{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
+.bar.over .fill{background:var(--warn);}
+.quickadd{margin:12px 0;padding-top:10px;border-top:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -113,10 +142,25 @@ button,input,select{font-family:inherit;}
   <header class="top">
     <h1>Protein Paket Mutfağı</h1>
     <div class="topActions">
+      <button class="gear" data-act="toggle-calendar" title="Günlük takvim" aria-label="Günlük takvim">Takvim</button>
       <button class="gear" data-act="toggle-newing" title="Yeni besin ekle" aria-label="Yeni besin ekle">Yeni besin</button>
       <button class="gear" data-act="toggle-settings" title="Ayarlar" aria-label="Ayarlar">Ayarlar</button>
     </div>
   </header>
+
+  <div id="todayCard" class="todayCard"></div>
+
+  <div id="calendarPanel" class="panel" hidden>
+    <h2>Günlük Takvim</h2>
+    <p>Hangi gün kaç gram protein ve kaç kcal almışsın, hızlıca görmek için.</p>
+    <div class="calnav">
+      <button data-act="cal-prev" aria-label="Önceki ay">‹</button>
+      <b id="calLabel"></b>
+      <button data-act="cal-next" aria-label="Sonraki ay">›</button>
+    </div>
+    <div class="calgrid" id="calGrid"></div>
+    <div id="dayDetail"></div>
+  </div>
 
   <div id="settingsPanel" class="panel" hidden>
     <h2>Firebase bağlantısı</h2>
@@ -226,6 +270,8 @@ function fmt(n,d){
 }
 function round1(n){return Math.round(n*10)/10;}
 function parseAmount(s){const v=parseFloat(String(s).replace(',','.'));return isNaN(v)?0:v;}
+function pad2(n){return String(n).padStart(2,'0');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function totals(items){
   let protein=0,kcal=0,cost=0;
@@ -310,7 +356,8 @@ function renderCard(){
     ${tunaWarn}
     <div class="dailyline">Bu paketten günde 2 tane: ${fmt(protein*2,0)} g protein, ${fmt(kcal*2,0)} kcal, ${fmt(cost*2,2)} TL</div>
     <div class="cardbtns">
-      <button class="btn" data-act="save-pkg">Paketi kaydet</button>
+      <button class="btn" data-act="log-today">Bugüne ekle</button>
+      <button class="btn ghost" data-act="save-pkg">Paketi kaydet</button>
       <button class="btn ghost" data-act="clear-pkg">Temizle</button>
     </div>`;
   document.getElementById('mobilebar').innerHTML=`<b>${fmt(protein,0)} g</b>protein · ${fmt(kcal,0)} kcal · ${fmt(cost,2)} TL`;
@@ -324,10 +371,206 @@ function renderPresets(){
 
 function renderAll(){renderShelf();renderCard();}
 
+/* ---- günlük kcal/protein takibi + takvim ---- */
+const LOGKEY='protein_gunluk_v1',GOALKEY='protein_hedef_v1',KCALGOALKEY='protein_kcal_hedef_v1';
+let gunlukLog=loadGunlukLocal();
+let proteinHedef=Number(localStorage.getItem(GOALKEY))||140;
+let kcalHedef=Number(localStorage.getItem(KCALGOALKEY))||2000;
+let calState=(()=>{const d=new Date();return{y:d.getFullYear(),m:d.getMonth()};})();
+let calSecili=null;
+
+function gunKey(d){d=d||new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function loadGunlukLocal(){try{return JSON.parse(localStorage.getItem(LOGKEY)||'{}');}catch(e){return {};}}
+function saveGunlukLocal(){try{localStorage.setItem(LOGKEY,JSON.stringify(gunlukLog));}catch(e){}}
+function gunToplam(key){const list=gunlukLog[key]||[];let protein=0,kcal=0;for(const en of list){protein+=en.protein;kcal+=en.kcal;}return{protein,kcal};}
+
+function setGoal(v){
+  proteinHedef=Math.max(0,v||0);
+  try{localStorage.setItem(GOALKEY,String(proteinHedef));}catch(e){}
+  pushHedeflerCloud();
+  renderToday();
+}
+function setKcalGoal(v){
+  kcalHedef=Math.max(0,v||0);
+  try{localStorage.setItem(KCALGOALKEY,String(kcalHedef));}catch(e){}
+  pushHedeflerCloud();
+  renderToday();
+}
+function pushHedeflerCloud(){
+  if(!Cloud.user)return;
+  Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler')
+    .set({protein:proteinHedef,kcal:kcalHedef},{merge:true})
+    .catch(e=>showToast('Hedef senkron hatası: '+fbErr(e)));
+}
+function mergeHedeflerOnLogin(){
+  /* cloud'da hiç hedef yoksa yereldekini yükler; girişte var olan yerel
+     ayarı (ör. offline iken değiştirilmiş hedef) boş bir bulut kaydı
+     ezmesin diye abone olmadan önce çalışır. */
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler');
+  return ref.get().then(snap=>{
+    if(!snap.exists)return ref.set({protein:proteinHedef,kcal:kcalHedef});
+  }).catch(e=>showToast('Hedef senkron hatası: '+fbErr(e)));
+}
+function subscribeHedefler(){
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler');
+  Cloud.unsubGoals=ref.onSnapshot(snap=>{
+    if(!snap.exists)return;
+    const d=snap.data()||{};
+    if(d.protein!=null){proteinHedef=d.protein;try{localStorage.setItem(GOALKEY,String(proteinHedef));}catch(e){}}
+    if(d.kcal!=null){kcalHedef=d.kcal;try{localStorage.setItem(KCALGOALKEY,String(kcalHedef));}catch(e){}}
+    renderToday();
+  },err=>showToast('Hedef senkron hatası: '+fbErr(err)));
+}
+function quickAddToday(){
+  const protein=parseAmount(document.getElementById('qaProtein').value);
+  const kcal=parseAmount(document.getElementById('qaKcal').value);
+  if(protein<=0&&kcal<=0){showToast('Protein ya da kcal gir');return;}
+  const name=document.getElementById('qaName').value.trim()||'Hızlı giriş';
+  const key=gunKey();
+  const entry={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),ts:Date.now(),name,protein,kcal,cost:0};
+  gunlukLog[key]=(gunlukLog[key]||[]).concat(entry);
+  saveGunlukLocal();pushGunlukCloud(key);
+  renderToday();
+  if(!document.getElementById('calendarPanel').hidden)renderCalendar();
+  showToast('Bugüne eklendi');
+}
+function logToday(){
+  if(!Object.keys(state.items).length){showToast('Önce malzeme ekleyin');return;}
+  const {protein,kcal,cost}=totals(state.items);
+  const key=gunKey();
+  const entry={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),ts:Date.now(),name:state.name||'Paket',protein,kcal,cost};
+  gunlukLog[key]=(gunlukLog[key]||[]).concat(entry);
+  saveGunlukLocal();pushGunlukCloud(key);
+  renderToday();
+  if(!document.getElementById('calendarPanel').hidden)renderCalendar();
+  showToast('Bugüne eklendi');
+}
+function removeEntry(key,eid){
+  gunlukLog[key]=(gunlukLog[key]||[]).filter(e=>e.id!==eid);
+  if(!gunlukLog[key].length)delete gunlukLog[key];
+  saveGunlukLocal();pushGunlukCloud(key);
+  renderToday();
+  if(!document.getElementById('calendarPanel').hidden)renderCalendar();
+}
+function pushGunlukCloud(key){
+  if(!Cloud.user)return;
+  const entries=gunlukLog[key]||[];
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog').doc(key);
+  (entries.length?ref.set({entries}):ref.delete()).catch(e=>showToast('Günlük senkron hatası: '+fbErr(e)));
+}
+function mergeGunlukOnLogin(){
+  /* girişten önce offline/yerel olarak birikmiş günler Firestore'da yoksa
+     veya eksikse yükler; onSnapshot'ın ilk (boş olabilecek) kopyası yerel
+     geçmişin üzerine yazıp silmesin diye abone olmadan önce çalışır. */
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog');
+  return ref.get().then(snap=>{
+    const cloud={};
+    snap.docs.forEach(d=>{const data=d.data();if(data.entries)cloud[d.id]=data.entries;});
+    const writes=[];
+    for(const key in gunlukLog){
+      const localEntries=gunlukLog[key]||[];
+      const cloudEntries=cloud[key]||[];
+      if(!localEntries.length)continue;
+      if(!cloudEntries.length){writes.push(ref.doc(key).set({entries:localEntries}));continue;}
+      const byId={};
+      cloudEntries.forEach(e=>byId[e.id]=e);
+      let changed=false;
+      localEntries.forEach(e=>{if(!byId[e.id]){byId[e.id]=e;changed=true;}});
+      if(changed)writes.push(ref.doc(key).set({entries:Object.values(byId).sort((a,b)=>a.ts-b.ts)}));
+    }
+    return Promise.all(writes);
+  }).catch(e=>showToast('Günlük senkron hatası: '+fbErr(e)));
+}
+function subscribeGunluk(){
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('gunlukLog');
+  Cloud.unsubLog=ref.onSnapshot(snap=>{
+    const cloud={};
+    snap.docs.forEach(d=>{const data=d.data();if(data.entries&&data.entries.length)cloud[d.id]=data.entries;});
+    gunlukLog=cloud;saveGunlukLocal();
+    renderToday();
+    if(!document.getElementById('calendarPanel').hidden)renderCalendar();
+  },err=>showToast('Günlük senkron hatası: '+fbErr(err)));
+}
+
+function renderToday(){
+  const key=gunKey();
+  const {protein,kcal}=gunToplam(key);
+  const list=(gunlukLog[key]||[]).slice().sort((a,b)=>a.ts-b.ts);
+
+  const pct=proteinHedef>0?Math.min(100,protein/proteinHedef*100):0;
+  const kalan=proteinHedef-protein;
+  let durum;
+  if(!list.length)durum='Bugün henüz bir şey eklenmedi.';
+  else if(kalan>0)durum=`Proteinde hedefe ${fmt(kalan,0)} g kaldı — takviye düşünebilirsin.`;
+  else durum='Günlük protein hedefine ulaştın.';
+
+  let kcalBlock='';
+  if(kcalHedef>0){
+    const kcalPct=Math.min(100,kcal/kcalHedef*100);
+    const kcalFark=kcalHedef-kcal;
+    const over=kcal>kcalHedef;
+    const kcalDurum=over?`Kalori hedefini ${fmt(-kcalFark,0)} kcal aştın.`:`Kaloride hedefe ${fmt(kcalFark,0)} kcal kaldı.`;
+    kcalBlock=`
+    <div class="bar${over?' over':''}"><div class="fill" style="width:${kcalPct}%"></div></div>
+    <div class="status${over?' warn':''}">${kcalDurum}</div>`;
+  }
+
+  const items=list.map(en=>`<li><span class="enm"><span class="t">${new Date(en.ts).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>${esc(en.name)}</span><span class="eval">${fmt(en.protein,1)} g · ${fmt(en.kcal,0)} kcal<button class="silBtn" data-act="del-entry" data-key="${key}" data-eid="${en.id}" title="Kaydı sil">×</button></span></li>`).join('');
+
+  document.getElementById('todayCard').innerHTML=`
+    <h2>Bugün</h2>
+    <div class="todayNums"><span class="big">${fmt(protein,0)}</span><span class="unit2">g protein</span><span class="kcalnum">${fmt(kcal,0)} kcal</span></div>
+    <div class="goalRow">Protein hedefi:<input type="text" inputmode="decimal" id="goalInput" value="${fmt(proteinHedef,0)}"> g · Kalori hedefi:<input type="text" inputmode="decimal" id="kcalGoalInput" value="${fmt(kcalHedef,0)}"> kcal</div>
+    <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+    <div class="status${kalan>0&&list.length?' warn':''}">${durum}</div>
+    ${kcalBlock}
+    <div class="quickadd row">
+      <div class="field2"><label for="qaName">Ad (opsiyonel)</label><input id="qaName" type="text" placeholder="örn. Takviye"></div>
+      <div class="field2"><label for="qaProtein">Protein (g)</label><input id="qaProtein" type="text" inputmode="decimal"></div>
+      <div class="field2"><label for="qaKcal">Kcal</label><input id="qaKcal" type="text" inputmode="decimal"></div>
+    </div>
+    <div class="row"><button class="btn" data-act="quick-add">Bugüne ekle</button></div>
+    <ul class="entrylist">${items}</ul>`;
+}
+
+const CAL_DOW=['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
+const CAL_AYLAR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function renderCalendar(){
+  const {y,m}=calState;
+  const startOffset=(new Date(y,m,1).getDay()+6)%7;
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  let cells=CAL_DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<startOffset;i++)cells+='<div class="calday empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const key=`${y}-${pad2(m+1)}-${pad2(d)}`;
+    const {protein,kcal}=gunToplam(key);
+    const has=protein>0||kcal>0;
+    cells+=`<div class="calday${has?' has':''}${key===calSecili?' sel':''}" data-act="cal-day" data-key="${key}">
+      <span class="dnum">${d}</span>
+      ${has?`<span class="dp">${fmt(protein,0)}g</span><span class="dk">${fmt(kcal,0)}kcal</span>`:''}
+    </div>`;
+  }
+  document.getElementById('calGrid').innerHTML=cells;
+  document.getElementById('calLabel').textContent=`${CAL_AYLAR[m]} ${y}`;
+  renderDayDetail();
+}
+function renderDayDetail(){
+  const el=document.getElementById('dayDetail');
+  if(!calSecili){el.innerHTML='';return;}
+  const list=(gunlukLog[calSecili]||[]).slice().sort((a,b)=>a.ts-b.ts);
+  const {protein,kcal}=gunToplam(calSecili);
+  const [yy,mm,dd]=calSecili.split('-');
+  const items=list.map(en=>`<li><span class="enm"><span class="t">${new Date(en.ts).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>${esc(en.name)}</span><span class="eval">${fmt(en.protein,1)} g · ${fmt(en.kcal,0)} kcal<button class="silBtn" data-act="del-entry" data-key="${calSecili}" data-eid="${en.id}" title="Kaydı sil">×</button></span></li>`).join('')||'<li><span class="nm">Bu gün için kayıt yok</span></li>';
+  el.innerHTML=`<div class="dayDetail"><b>${dd}.${mm}.${yy}</b> — ${fmt(protein,0)} g protein · ${fmt(kcal,0)} kcal<ul class="entrylist">${items}</ul></div>`;
+}
+function calPrev(){calState.m--;if(calState.m<0){calState.m=11;calState.y--;}renderCalendar();}
+function calNext(){calState.m++;if(calState.m>11){calState.m=0;calState.y++;}renderCalendar();}
+function selectDay(key){calSecili=(calSecili===key?null:key);renderCalendar();}
+
 /* ---- Firebase: aynı 'fb_config' anahtarı fitnas (index.html) ile paylaşılır,
    böylece orada girilen hesap buradaki pakette de otomatik kullanılır ---- */
 const CFGKEY='fb_config';
-const Cloud={app:null,auth:null,db:null,user:null,unsub:null,unsubIng:null,unsubPrices:null};
+const Cloud={app:null,auth:null,db:null,user:null,unsub:null,unsubIng:null,unsubPrices:null,unsubLog:null,unsubGoals:null};
 
 function cfgGet(){try{const s=localStorage.getItem(CFGKEY);return s?JSON.parse(s):null;}catch(e){return null;}}
 function fbErr(e){
@@ -345,6 +588,7 @@ function showToast(msg){
    match /users/{uid}/proteinPaketleri/{id} { allow read, write: if request.auth != null && request.auth.uid == uid; }
    match /users/{uid}/customIngredients/{id} { allow read, write: if request.auth != null && request.auth.uid == uid; }
    match /users/{uid}/meta/{doc} { allow read, write: if request.auth != null && request.auth.uid == uid; }
+   match /users/{uid}/gunlukLog/{day} { allow read, write: if request.auth != null && request.auth.uid == uid; }
 */
 function cloudInit(){
   const cfg=cfgGet();
@@ -361,12 +605,14 @@ function cloudInit(){
     Cloud.auth=firebase.auth();Cloud.db=firebase.firestore();
     Cloud.auth.onAuthStateChanged(u=>{
       Cloud.user=u;
-      [Cloud.unsub,Cloud.unsubIng,Cloud.unsubPrices].forEach(fn=>fn&&fn());
-      Cloud.unsub=Cloud.unsubIng=Cloud.unsubPrices=null;
+      [Cloud.unsub,Cloud.unsubIng,Cloud.unsubPrices,Cloud.unsubLog,Cloud.unsubGoals].forEach(fn=>fn&&fn());
+      Cloud.unsub=Cloud.unsubIng=Cloud.unsubPrices=Cloud.unsubLog=Cloud.unsubGoals=null;
       panel.hidden=!!u;
       if(u){
         statusText.textContent='Bağlı: '+(u.email||u.uid);
         subscribePackages();subscribeCustomIngredients();subscribePrices();
+        mergeGunlukOnLogin().then(subscribeGunluk);
+        mergeHedeflerOnLogin().then(subscribeHedefler);
       }else{
         statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
         savedCache=[];customIng=[];priceOverrides={};rebuildCatalog();renderAll();renderPresets();
@@ -503,6 +749,16 @@ document.addEventListener('click',e=>{
   else if(act==='del-pkg')deleteSaved(id);
   else if(act==='add-ing')addIngredient();
   else if(act==='del-ing')deleteIngredient(id);
+  else if(act==='log-today')logToday();
+  else if(act==='quick-add')quickAddToday();
+  else if(act==='del-entry')removeEntry(b.dataset.key,b.dataset.eid);
+  else if(act==='toggle-calendar'){
+    const p=document.getElementById('calendarPanel');p.toggleAttribute('hidden');
+    if(!p.hidden)renderCalendar();
+  }
+  else if(act==='cal-prev')calPrev();
+  else if(act==='cal-next')calNext();
+  else if(act==='cal-day')selectDay(b.dataset.key);
 });
 document.addEventListener('input',e=>{
   if(e.target.matches('[data-act="qtyinput"]')){
@@ -517,10 +773,13 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.matches('[data-act="priceinput"]'))savePrice(e.target.dataset.id,parseAmount(e.target.value));
+  else if(e.target.id==='goalInput')setGoal(parseAmount(e.target.value));
+  else if(e.target.id==='kcalGoalInput')setKcalGoal(parseAmount(e.target.value));
 });
 
 loadPreset(PRESETS[0].items,PRESETS[0].name);
 renderPresets();
+renderToday();
 cloudInit();
 </script>
 </body>
