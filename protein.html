@@ -387,12 +387,39 @@ function gunToplam(key){const list=gunlukLog[key]||[];let protein=0,kcal=0;for(c
 function setGoal(v){
   proteinHedef=Math.max(0,v||0);
   try{localStorage.setItem(GOALKEY,String(proteinHedef));}catch(e){}
+  pushHedeflerCloud();
   renderToday();
 }
 function setKcalGoal(v){
   kcalHedef=Math.max(0,v||0);
   try{localStorage.setItem(KCALGOALKEY,String(kcalHedef));}catch(e){}
+  pushHedeflerCloud();
   renderToday();
+}
+function pushHedeflerCloud(){
+  if(!Cloud.user)return;
+  Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler')
+    .set({protein:proteinHedef,kcal:kcalHedef},{merge:true})
+    .catch(e=>showToast('Hedef senkron hatası: '+fbErr(e)));
+}
+function mergeHedeflerOnLogin(){
+  /* cloud'da hiç hedef yoksa yereldekini yükler; girişte var olan yerel
+     ayarı (ör. offline iken değiştirilmiş hedef) boş bir bulut kaydı
+     ezmesin diye abone olmadan önce çalışır. */
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler');
+  return ref.get().then(snap=>{
+    if(!snap.exists)return ref.set({protein:proteinHedef,kcal:kcalHedef});
+  }).catch(e=>showToast('Hedef senkron hatası: '+fbErr(e)));
+}
+function subscribeHedefler(){
+  const ref=Cloud.db.collection('users').doc(Cloud.user.uid).collection('meta').doc('hedefler');
+  Cloud.unsubGoals=ref.onSnapshot(snap=>{
+    if(!snap.exists)return;
+    const d=snap.data()||{};
+    if(d.protein!=null){proteinHedef=d.protein;try{localStorage.setItem(GOALKEY,String(proteinHedef));}catch(e){}}
+    if(d.kcal!=null){kcalHedef=d.kcal;try{localStorage.setItem(KCALGOALKEY,String(kcalHedef));}catch(e){}}
+    renderToday();
+  },err=>showToast('Hedef senkron hatası: '+fbErr(err)));
 }
 function quickAddToday(){
   const protein=parseAmount(document.getElementById('qaProtein').value);
@@ -543,7 +570,7 @@ function selectDay(key){calSecili=(calSecili===key?null:key);renderCalendar();}
 /* ---- Firebase: aynı 'fb_config' anahtarı fitnas (index.html) ile paylaşılır,
    böylece orada girilen hesap buradaki pakette de otomatik kullanılır ---- */
 const CFGKEY='fb_config';
-const Cloud={app:null,auth:null,db:null,user:null,unsub:null,unsubIng:null,unsubPrices:null,unsubLog:null};
+const Cloud={app:null,auth:null,db:null,user:null,unsub:null,unsubIng:null,unsubPrices:null,unsubLog:null,unsubGoals:null};
 
 function cfgGet(){try{const s=localStorage.getItem(CFGKEY);return s?JSON.parse(s):null;}catch(e){return null;}}
 function fbErr(e){
@@ -578,13 +605,14 @@ function cloudInit(){
     Cloud.auth=firebase.auth();Cloud.db=firebase.firestore();
     Cloud.auth.onAuthStateChanged(u=>{
       Cloud.user=u;
-      [Cloud.unsub,Cloud.unsubIng,Cloud.unsubPrices,Cloud.unsubLog].forEach(fn=>fn&&fn());
-      Cloud.unsub=Cloud.unsubIng=Cloud.unsubPrices=Cloud.unsubLog=null;
+      [Cloud.unsub,Cloud.unsubIng,Cloud.unsubPrices,Cloud.unsubLog,Cloud.unsubGoals].forEach(fn=>fn&&fn());
+      Cloud.unsub=Cloud.unsubIng=Cloud.unsubPrices=Cloud.unsubLog=Cloud.unsubGoals=null;
       panel.hidden=!!u;
       if(u){
         statusText.textContent='Bağlı: '+(u.email||u.uid);
         subscribePackages();subscribeCustomIngredients();subscribePrices();
         mergeGunlukOnLogin().then(subscribeGunluk);
+        mergeHedeflerOnLogin().then(subscribeHedefler);
       }else{
         statusText.textContent='Giriş yapılmamış. Ana sayfadan giriş yap; buradaki paket kaydı otomatik çalışacak.';
         savedCache=[];customIng=[];priceOverrides={};rebuildCatalog();renderAll();renderPresets();
