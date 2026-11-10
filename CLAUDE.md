@@ -78,12 +78,17 @@ All UI text and comments are in TURKISH. Keep that.
   defaults; every consumer reads from `S.cfg` with fallback. New tunable constants go here, never
   hard-coded.
 
-## UI structure (bottom nav, 5 tabs)
+## UI structure (bottom nav, 5 tabs + 1 header link)
 Bugün (Today: tiles, log a set, per-second timer for 'sn' exercises, tempo metronome via Web Audio,
 undo-one-set, day-spread view, one-off exercises, pain/overload flags) · Denge (Balance: [Analiz |
 Durum] segments — muscle/pattern/system readiness + pain rating) · Özet (Overview: [Panel | Takvim |
 Egzersiz]) · Rekor (PR tracking with retest intervals) · Program (Weekly editor | Suggestions |
 All exercises + full exercise editor).
+- Rehab (header link "🩹 Rehab", `data-nav="5"`, not in the bottom nav — `render.js`'s `NAV_COUNT`
+  caps the nav loop at 5 so `TABS[5]` stays reachable only from the header): a completely isolated
+  exercise/log tracker for rehab work, scoped under `S.rehab` and never touched by `S.all()`,
+  `S.logs`, `sysRecovery`, or `painStatus` — see `mantik/rehab.js`. Its own color scope (`.rehab-scope`
+  CSS class, light baby-blue / dark variants) keeps it visually distinct without altering the global theme.
 - Rendering is string-templated: `render()` sets `#content.innerHTML = PAGES[U.tab]()`. Events use
   delegation via `data-act`/`data-id` on a single body click handler; sheets/dialogs use `openSheet`
   /`openDialog`/`closeOverlay`. Follow these patterns; don't introduce a framework.
@@ -104,8 +109,8 @@ js/
   sabitler.js           M_ORDER, S_ORDER, MINFO, SINFO, PAIN_*, SYS_GROUPS, gün/ay adları, PHASE, CFG_DEFAULT, mergeCfg, all7   [yaprak]
   yardimcilar.js        tarih/biçim: pad, dOnly, weekday, dayKey, fmt, esc, dt, monthStart, addMonths…   [yaprak]
   katalog.js            E(), T(), kCatalog
-  durum.js              KEY, S, effective, defOf, serialize, migrateTendon, applyState, load, migrateV1, save, changed
-  eylemler.js           durumu değiştirenler: addLog, undoLast, saveExercise, resetAll, setPain, setCfg… (→ changed())
+  durum.js              KEY, S (S.rehab dahil, bkz. UI structure), effective, defOf, serialize, migrateTendon, applyState, load, migrateV1, save, changed
+  eylemler.js           durumu değiştirenler: addLog, undoLast, saveExercise, resetAll, setPain, setCfg, saveRehabExercise, addRehabLog… (→ changed())
   bulut.js              Cloud, cloudInit/Subscribe/Push/Auth, fbErr, renderIfSettings
   mantik/
     program.js          weekNo, target, todayList, scheduledAt, plannedOn, oneoff*, spreadPlan, streak, currentChain
@@ -113,18 +118,23 @@ js/
     agri.js             painNow, painAt, painStatus, effSets, painExercises
     rekor.js            maxHistory, lastMax, maxDue, bestOf, prereqMet
     analiz.js           status, muscleLoad, systemLoad, patternSets, gapScore, monthAgg
+    rehab.js            S.rehab'a özel okuma/sorgu: rehabAll, rehabEx, rehabTodayList, rehabCountOn,
+                         rehabStreak, rehabWeeklyCounts — ana S.logs/S.all()/sysRecovery/painStatus'tan
+                         tamamen izole, target()/weekNo() dışında program.js'e dokunmaz
   ui/
-    durum-ui.js         U = paylaşılan UI durumu (tab, segment modları, filtreler, timerInt, cloudOpen)   [yaprak]
+    durum-ui.js         U = paylaşılan UI durumu (tab, segment modları, filtreler, timerInt, cloudOpen, rehabMode)   [yaprak]
     html.js             tag, exTags, sec, noteBox, barHtml, statTile
     overlay.js          overlay, openSheet, openDialog, closeOverlay, showToast
-    render.js           TABS, PAGES, render
-    zamanlayici.js      openTimer, openMetro, beep (Web Audio)
+    render.js           NAV_COUNT, TABS, NAVIC, PAGES, render
+    zamanlayici.js      openTimer, openMetro, beep (Web Audio) — opsiyonel log/undo callback alır (varsayılan addLog/undoLast)
     editor.js           openEditor (egzersiz editörü)
     ayarlar.js          openSettings, openConfig ("Analiz ve kurallar")
     bulut-ekrani.js     openCloud, cloudStatusText
     tema.js             applyTheme, cycleTheme
   sayfalar/             her sekme: render* + o sekmenin sheet'leri
     bugun.js  denge.js  ozet.js  rekor.js  program.js
+    rehab.js            renderRehab, openRehabLog, openRehabEditor — ana sayfalardan tamamen ayrı,
+                         .rehab-scope renk kapsamı içinde render edilir
   olaylar.js            body click delegasyonu (data-act/data-nav) → ilgili fonksiyon
 ```
 Bağımlılık yönü: sabitler/yardimcilar → katalog → durum → mantik/* → ui/* → sayfalar/* → olaylar → main.
