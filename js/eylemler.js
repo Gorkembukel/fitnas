@@ -16,7 +16,7 @@ export function addMetric(k,v){S.metrics.push({k,v,t:Date.now()});changed();}
 export function setStart(d){S.start=dOnly(d);changed();}
 export function setTestInterval(n){S.testInterval=n;changed();}
 export function resetToday(){const t=dOnly(new Date());S.logs=S.logs.filter(l=>!sameDay(dt(l),t));delete S.signals[dayKey(t)];changed();}
-export function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.sessionNames={};S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
+export function resetAll(){S.logs=[];S.metrics=[];S.signals={};S.custom=[];S.overrides={};S.maxes=[];S.testInterval=28;S.schedLog=[];S.oneoff=[];S.pain={};S.painLog=[];S.painAction=[];S.cfg=mergeCfg();S.sessionNames={};S.rehab={exercises:[],active:new Set(),logs:[]};S.reindex();S.active=new Set(defaultActive());S.start=dOnly(new Date());changed();}
 export function setSessionName(d,name){name=(name||'').trim();if(name)S.sessionNames[d]=name;else delete S.sessionNames[d];changed();}
 export function resetCfg(){S.cfg=mergeCfg();changed();}
 /* ── egzersiz düzenleme ── */
@@ -39,3 +39,13 @@ export function setPainAction(id,mode){const key=dayKey(dOnly(new Date()));S.pai
 export function addOneoff(id,key){if(!S.oneoff.some(o=>o.e===id&&o.d===key))S.oneoff.push({e:id,d:key});changed();}
 export function removeOneoff(id,key){S.oneoff=S.oneoff.filter(o=>!(o.e===id&&o.d===key));changed();}
 export function setCfg(path,val){const p=path.split('.');let o=S.cfg;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=val;changed();}
+/* ── rehabilitasyon: ana sistemden tamamen izole, S.logs/S.custom/S.active'e hiç dokunmaz ── */
+export function saveRehabExercise(id,def){
+  if(id){const e=S.rehab.exercises.find(x=>x.id===id);if(e)Object.assign(e,{name:def.name,unit:def.unit,days:def.days,targets:def.targets,step:def.step,rpe:def.rpe,tempo:def.tempo||'',note:def.note||'',muscles:def.muscles||{},systems:def.systems||{}});}
+  else{const sid='rehab_'+Date.now();S.rehab.exercises.push(E(sid,def.name,{pattern:'Rehab',unit:def.unit,grp:'Rehab',custom:true,muscles:def.muscles||{},systems:def.systems||{},days:def.days,targets:def.targets,rpe:def.rpe,step:def.step,note:def.note||'',tempo:def.tempo||''}));S.rehab.active.add(sid);}
+  changed();
+}
+export function removeRehabExercise(id){S.rehab.exercises=S.rehab.exercises.filter(e=>e.id!==id);S.rehab.active.delete(id);changed();}
+export function toggleRehabActive(id){S.rehab.active.has(id)?S.rehab.active.delete(id):S.rehab.active.add(id);changed();}
+export function addRehabLog(id,v,r){S.rehab.logs.push({e:id,t:Date.now(),v,r});changed();}
+export function undoLastRehabLog(id){for(let i=S.rehab.logs.length-1;i>=0;i--){if(S.rehab.logs[i].e===id){S.rehab.logs.splice(i,1);break;}}changed();}

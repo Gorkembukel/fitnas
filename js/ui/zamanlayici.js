@@ -9,7 +9,8 @@ export const METRO_END_VOLS=[0,0.15,0.3,0.5],METRO_END_LBL=['Kapalı','Kısık',
 export function ensureAudio(){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
 export function beep(freq,dur,vol){try{ensureAudio();if(!audioCtx)return;const t=audioCtx.currentTime;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=freq||660;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.2,t+0.005);g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.08));o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+(dur||0.08)+0.02);}catch(e){}}
 export function vibrate(ms){try{if(navigator&&navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
-export function openTimer(e,secs){
+export function openTimer(e,secs,log,undo){
+  log=log||addLog;undo=undo||undoLast;
   secs=Math.max(1,Math.round(secs||1));let rem=secs,running=false;
   openSheet(`<div class="title-lg" style="text-align:center">${esc(e.name)}</div>
     <div class="muted small" style="text-align:center;margin-top:2px">Hedef ${secs} sn · her saniye bip, bitince uzun bip ve titreşim</div>
@@ -22,7 +23,7 @@ export function openTimer(e,secs){
   const tg=overlay.querySelector('#tmtoggle'),msg=overlay.querySelector('#tmmsg');
   const upd=()=>{const el=overlay.querySelector('#tmv');if(el)el.textContent=rem;};
   const stop=()=>{running=false;if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}if(tg)tg.textContent=rem<secs&&rem>0?'▶ Devam':'▶ Başlat';};
-  const finish=()=>{if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}running=false;const el=overlay.querySelector('#tmv');if(el)el.textContent='0';if(soundOn)beep(1200,0.32,0.28);vibrate([120,60,120]);addLog(e.id,secs,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tg)tg.textContent='▶ Tekrar';rem=secs;setTimeout(upd,700);showToast(`${e.name}: ${secs} sn kaydedildi`,()=>undoLast(e.id));};
+  const finish=()=>{if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}running=false;const el=overlay.querySelector('#tmv');if(el)el.textContent='0';if(soundOn)beep(1200,0.32,0.28);vibrate([120,60,120]);log(e.id,secs,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tg)tg.textContent='▶ Tekrar';rem=secs;setTimeout(upd,700);showToast(`${e.name}: ${secs} sn kaydedildi`,()=>undo(e.id));};
   const tick=()=>{rem--;if(rem<=0){finish();return;}if(soundOn)beep(rem<=3?960:660,0.06,0.2);upd();};
   const start=()=>{if(rem<=0)rem=secs;running=true;if(tg)tg.textContent='⏸ Duraklat';ensureAudio();if(soundOn)beep(660,0.06,0.2);if(msg)msg.textContent='\u00a0';if(U.timerInt)clearInterval(U.timerInt);U.timerInt=setInterval(tick,1000);upd();};
   tg.onclick=()=>{running?stop():start();};
@@ -33,7 +34,8 @@ export function tempoArr(e){return String(e.tempo||'').split('-').map(x=>parseIn
 export const PHASE_NAMES=['İniş','Alt bekleme','Çıkış','Üst bekleme'];
 export function phaseName(i,n){return (n<=4&&PHASE_NAMES[i])?PHASE_NAMES[i]:'Faz '+(i+1);}
 export function metroFinishSound(){const v=METRO_END_VOLS[metroEndVolIdx];if(v<=0)return;ensureAudio();beep(784,0.14,v);setTimeout(()=>beep(1047,0.2,v),150);setTimeout(()=>beep(1319,0.24,v),340);}
-export function openMetro(e,reps){
+export function openMetro(e,reps,log,undo){
+  log=log||addLog;undo=undo||undoLast;
   const cad=tempoArr(e).filter((d,i,a)=>true);let ph=cad.filter(d=>d>0).length?cad:[2,0,2,0];
   reps=Math.max(1,Math.round(reps||1));
   const seq=[];for(let r=0;r<reps;r++)ph.forEach((d,pi)=>{for(let s=0;s<d;s++)seq.push({accent:s===0,phase:pi,rep:r});});
@@ -55,7 +57,7 @@ export function openMetro(e,reps){
     if(p)p.textContent=it?phaseName(it.phase,nph):'—';if(rp)rp.textContent=`Tekrar ${it?it.rep+1:reps}/${reps}`;};
   const playTick=(it)=>{if(!metroTickOn)return;ensureAudio();beep(it.accent?960:620,it.accent?0.07:0.05,0.2);};
   const stop=()=>{running=false;if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}if(tgl)tgl.textContent=i>0&&i<N?'▶ Devam':'▶ Başlat';};
-  const finish=()=>{if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}running=false;metroFinishSound();vibrate([140,70,140]);addLog(e.id,reps,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tgl)tgl.textContent='▶ Tekrar';i=0;const p=overlay.querySelector('#mph');if(p)p.textContent='Bitti 🎉';showToast(`${e.name}: ${reps} tekrar (tempo) kaydedildi`,()=>undoLast(e.id));};
+  const finish=()=>{if(U.timerInt){clearInterval(U.timerInt);U.timerInt=null;}running=false;metroFinishSound();vibrate([140,70,140]);log(e.id,reps,e.rpe);if(msg)msg.textContent='✓ Set kaydedildi';if(tgl)tgl.textContent='▶ Tekrar';i=0;const p=overlay.querySelector('#mph');if(p)p.textContent='Bitti 🎉';showToast(`${e.name}: ${reps} tekrar (tempo) kaydedildi`,()=>undo(e.id));};
   const step=()=>{i++;if(i>=N){finish();return;}playTick(seq[i]);showPh();};
   const start=()=>{if(i>=N)i=0;running=true;if(tgl)tgl.textContent='⏸ Duraklat';if(msg)msg.textContent='\u00a0';ensureAudio();playTick(seq[i]);showPh();if(U.timerInt)clearInterval(U.timerInt);U.timerInt=setInterval(step,1000);};
   tgl.onclick=()=>{running?stop():start();};

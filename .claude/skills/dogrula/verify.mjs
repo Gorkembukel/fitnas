@@ -37,7 +37,11 @@ const SCENARIOS = [
     logs: realisticLogs(), metrics: [{ k: 'Kilo (kg)', v: 80, t: now - 5 * 24 * H }], signals: {}, overrides: {}, maxes: [],
     testInterval: 28, schedLog: [], oneoff: [], pain: { tendonKol: 2, tendonDiz: 3 },
     painLog: [{ s: 'tendonKol', level: 2, t: now - 2 * H }, { s: 'tendonDiz', level: 3, t: now - H }], painAction: [],
-    cfg: { overloadMult: 1.2 }, sessionNames: { 3: 'Mobilite günü' }, custom: [] }) }],
+    cfg: { overloadMult: 1.2 }, sessionNames: { 3: 'Mobilite günü' }, custom: [],
+    rehab: { exercises: [{ id: 'rehab_1', def: { name: 'Omuz rotasyonu', note: '', pattern: 'Rehab', unit: 'tekrar', days: [1, 3, 5], rpe: 4,
+      impact: false, halfRec: false, step: 0, tempo: '', recovery: '', muscles: { omuz: 1 }, systems: { tendonItme: 1 },
+      targets: [{ sets: 2, v: 10 }, { sets: 2, v: 10 }, { sets: 2, v: 10 }, { sets: 2, v: 10 }] } }],
+      active: ['rehab_1'], logs: [{ e: 'rehab_1', t: now - 3 * H, v: 10, r: 4 }] } }) }],
   ['Eski taksonomi (v2, kas/tendon anahtarları)', { antrenman_takip_v2: JSON.stringify({
     start: new Date(now - 10 * 24 * H).toISOString(), active: ['push', 'chin', 'c_eski'],
     logs: [{ e: 'chin', t: now - 5 * H, v: 1, r: 8 }, { e: 'c_eski', t: now - 3 * H, v: 5, r: 7 }],
@@ -63,6 +67,7 @@ if (argIdx > 0) {
   try { await imp('main.js'); ok('açılış: main.js (applyTheme → load → render → cloudInit)'); }
   catch (e) { bad('açılış: main.js (applyTheme → load → render → cloudInit)', e); report(); }
   const { S, serialize, applyState } = await imp('durum.js');
+  const { addRehabLog, saveRehabExercise } = await imp('eylemler.js');
   const { CFG_DEFAULT, S_ORDER } = await imp('sabitler.js');
   const { sysRecovery, sysThreshold } = await imp('mantik/toparlanma.js');
   const { target } = await imp('mantik/program.js');
@@ -70,11 +75,11 @@ if (argIdx > 0) {
   const { PAGES, TABS, render } = await imp('ui/render.js');
   const { U } = await imp('ui/durum-ui.js');
 
-  const MODES = { 1: ['balMode', [0, 1]], 2: ['progMode', [0, 1, 2]], 4: ['libMode', [0, 1, 2]] }; // sekme → alt segment
+  const MODES = { 1: ['balMode', [0, 1]], 2: ['progMode', [0, 1, 2]], 4: ['libMode', [0, 1, 2]], 5: ['rehabMode', [0, 1]] }; // sekme → alt segment
   for (let t = 0; t < PAGES.length; t++) {
     const [key, modes] = MODES[t] || [null, [0]];
     for (const m of modes) check(`render ${TABS[t]}${key ? ' #' + m : ''}`, () => {
-      U.tab = t; U.balMode = U.progMode = U.libMode = 0; if (key) U[key] = m;
+      U.tab = t; U.balMode = U.progMode = U.libMode = U.rehabMode = 0; if (key) U[key] = m;
       const h = PAGES[t](); if (typeof h !== 'string' || !h.length) throw new Error('boş/string olmayan HTML');
       if (/undefined|NaN/.test(h.replace(/<[^>]*>/g, ''))) throw new Error('görünür metinde "undefined"/"NaN" var');
       render();
@@ -95,6 +100,29 @@ if (argIdx > 0) {
       if (!Number.isFinite(r) || r < 0) throw new Error(`${s}: sysRecovery=${r}`);
       if (!Number.isFinite(th) || th <= 0) throw new Error(`${s}: sysThreshold=${th}`);
     }
+  });
+  check('S.rehab her senaryoda geçerli yapıda (eski kayıtlarda da varsayılana düşer)', () => {
+    if (!S.rehab || !Array.isArray(S.rehab.exercises) || !(S.rehab.active instanceof Set) || !Array.isArray(S.rehab.logs))
+      throw new Error('S.rehab şekli bozuk: ' + JSON.stringify(S.rehab && { ...S.rehab, active: [...(S.rehab.active || [])] }));
+  });
+  check('rehab verisi ana S.all()/S.logs/sysRecovery/painStatus’a hiç sızmıyor', () => {
+    // sysRecovery zamana göre aşınır; rehab'ın etkisini zamandan ayırmak için Date.now() dondurulur.
+    const frozen = Date.now(), origNow = Date.now;
+    Date.now = () => frozen;
+    try {
+      const before = {}; for (const s of S_ORDER) before[s] = sysRecovery(s);
+      const mainLogCountBefore = S.logs.length;
+      const def = { name: 'Doğrulama rehab egzersizi', unit: 'tekrar', days: [1, 2, 3, 4, 5, 6, 7],
+        targets: [{ sets: 3, v: 10 }, { sets: 3, v: 10 }, { sets: 3, v: 10 }, { sets: 3, v: 10 }], step: 0, rpe: 8,
+        muscles: { gogus: 1 }, systems: { kasItme: 1, tendonItme: 1 }, note: '' };
+      saveRehabExercise(null, def);
+      const rid = S.rehab.exercises[S.rehab.exercises.length - 1].id;
+      addRehabLog(rid, 10, 9);
+      for (const s of S_ORDER) if (sysRecovery(s) !== before[s]) throw new Error(`${s}: sysRecovery ${before[s]} -> ${sysRecovery(s)} (rehab'dan etkilendi)`);
+      if (S.logs.length !== mainLogCountBefore) throw new Error('rehab logu S.logs büyüdü: ' + mainLogCountBefore + ' -> ' + S.logs.length);
+      if (S.all().some(e => e.id === rid)) throw new Error('rehab egzersizi S.all() içine sızdı');
+      if (S.ex(rid)) throw new Error('rehab egzersizi S.ex() üzerinden erişilebilir oldu');
+    } finally { Date.now = origNow; }
   });
   check('target / painStatus tüm aktif egzersizlerde', () => {
     const d = new Date();
