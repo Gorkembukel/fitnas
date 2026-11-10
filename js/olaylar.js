@@ -1,11 +1,13 @@
 // Olay delegasyonu: data-act / data-nav tıklamaları.
 import {S} from './durum.js';
-import {addDay,addLog,addOneoff,removeCustom,removeDay,removeOneoff,resetExercise,resetToday,setPain,setPainAction,toggleActive,toggleSignal,undoLast} from './eylemler.js';
+import {addDay,addLog,addOneoff,addRehabLog,removeCustom,removeDay,removeOneoff,resetExercise,resetToday,setPain,setPainAction,toggleActive,toggleRehabActive,toggleSignal,undoLast,undoLastRehabLog} from './eylemler.js';
 import {oneoffTarget,target} from './mantik/program.js';
+import {rehabEx} from './mantik/rehab.js';
 import {openLog,openPainMenu} from './sayfalar/bugun.js';
 import {openGroupDetail} from './sayfalar/denge.js';
 import {openDay,openMetric} from './sayfalar/ozet.js';
 import {openDayPicker,openOneoffPicker,openSessionEditor} from './sayfalar/program.js';
+import {openRehabEditor,openRehabLog} from './sayfalar/rehab.js';
 import {openInterval,openMax} from './sayfalar/rekor.js';
 import {openSettings} from './ui/ayarlar.js';
 import {U} from './ui/durum-ui.js';
@@ -60,6 +62,15 @@ document.body.addEventListener('click',ev=>{
     case 'addcustom':openEditor(null);break;
     case 'edit':openEditor(id);break;
     case 'resetex':resetExercise(id);break;
+    case 'rehabmode':U.rehabMode=+el.dataset.v;render();break;
+    case 'rehabadd':openRehabEditor(null);break;
+    case 'rehabedit':openRehabEditor(id);break;
+    case 'rehabtoggle':toggleRehabActive(id);break;
+    case 'rehablog':{const e=rehabEx(id),t=target(e,dOnly(new Date()));openRehabLog(e,t.v);break;}
+    case 'rehabaddset':{const e=rehabEx(id),t=target(e,dOnly(new Date()));addRehabLog(id,t.v,e.rpe);showToast(`${e.name}: ${fmt(t.v)} ${e.unit} kaydedildi`,()=>undoLastRehabLog(id));break;}
+    case 'rehabundo':{undoLastRehabLog(id);const e=rehabEx(id);showToast(`${e?e.name:'Set'}: son set geri alındı`);break;}
+    case 'rehabtimer':{const e=rehabEx(id),t=target(e,dOnly(new Date()));openTimer(e,t.v,addRehabLog,undoLastRehabLog);break;}
+    case 'rehabmetro':{const e=rehabEx(id),t=target(e,dOnly(new Date()));openMetro(e,t.v,addRehabLog,undoLastRehabLog);break;}
   }
 });
 document.body.addEventListener('change',ev=>{const el=ev.target.closest('[data-act="toggle-sw"]');

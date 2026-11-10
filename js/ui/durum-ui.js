@@ -7,4 +7,5 @@ export const U={
   libMode:0,filterS:null,filterM:null,      // Program: segment ve filtreler
   timerInt:null,    // zamanlayıcı / metronom setInterval
   cloudOpen:false,  // bulut ekranı açık mı
+  rehabMode:0,      // Rehab: 0 Bugün, 1 İlerleme
 };

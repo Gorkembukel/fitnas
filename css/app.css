@@ -30,6 +30,7 @@ header h1{font-size:22px;font-weight:600;margin:0;flex:1;letter-spacing:.2px}
 .iconbtn{border:none;background:transparent;color:var(--onsurf);font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .iconbtn:hover{background:color-mix(in srgb,var(--onsurf) 8%,transparent)}
 .navlink{font-size:13px;color:var(--onvar);text-decoration:none;padding:8px 12px;border-radius:999px;background:var(--surfhi);white-space:nowrap}
+button.navlink{border:none;cursor:pointer;font-family:inherit}
 #content{flex:1;overflow-y:auto;padding:0 16px 96px;-webkit-overflow-scrolling:touch}
 nav{display:flex;background:var(--surface);border-top:1px solid var(--divider);flex:none;
   padding-bottom:env(safe-area-inset-bottom,0px);position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto}
@@ -144,3 +145,19 @@ details.ex[open] > summary .chev{transform:rotate(180deg)}
 .lgd .d{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:-1px}
 .dsheet .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)}
 .dpill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:8px;display:inline-block}
+/* Rehab sekmesi: ana temadan ayırt edilebilir bebek-mavisi kapsamlı renk override'ı (--red/--orange/--green aynı kalır). */
+.rehab-scope{
+  --primary:#1f6fb2; --onprimary:#ffffff; --primcont:#cfe8f7; --onprimcont:#0a3a5c;
+  --bg:#eaf4fb; --surface:#f6fbfe; --card:#ffffff; --surfhi:#dcedf7;
+  --onsurf:#10263a; --onvar:#3c5266; --outline:#a9cbe0; --divider:#d3e6f2;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rehab-scope{
+  --primary:#8fd0f5; --onprimary:#0a2d40; --primcont:#234258; --onprimcont:#cdeaff;
+  --bg:#0f1f2d; --surface:#16293a; --card:#1c3348; --surfhi:#234154;
+  --onsurf:#e4f1f9; --onvar:#9fb9c9; --outline:#2d4a5f; --divider:#223e52;
+}}
+:root[data-theme="dark"] .rehab-scope{
+  --primary:#8fd0f5; --onprimary:#0a2d40; --primcont:#234258; --onprimcont:#cdeaff;
+  --bg:#0f1f2d; --surface:#16293a; --card:#1c3348; --surfhi:#234154;
+  --onsurf:#e4f1f9; --onvar:#9fb9c9; --outline:#2d4a5f; --divider:#223e52;
+}
